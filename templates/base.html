@@ -1,0 +1,19 @@
+<!--基础模板-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}我的应用{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('home') }}">首页</a>
+        <a href="{{ url_for('about') }}">关于</a>
+        <a href="{{ url_for('contact') }}">联系</a>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
