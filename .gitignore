@@ -1,0 +1,25 @@
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# Python 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# 数据库文件
+*.db
+*.sqlite3
+
+# IDE 配置文件
+.vscode/
+.idea/
+
+# 环境变量文件（敏感信息）
+.env
+
+# 其他
+.DS_Store
