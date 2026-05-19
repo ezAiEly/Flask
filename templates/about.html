@@ -3,15 +3,16 @@
 {% block title %}关于{% endblock %}
 {% block content %}
 <h1>关于我们</h1>
-<p class="text-muted mb-2">这是一个使用 Flask 构建的 Web 应用。</p>
+<p class="text-muted mb-2">一个类 B 站风格的视频社区网站。</p>
 
 <div class="card mt-2">
     <h3><i class="fas fa-code"></i> 技术栈</h3>
     <ul style="padding-left:1.5rem; margin-top:0.5rem;">
         <li>后端：Flask + SQLAlchemy + Flask-JWT-Extended + Flask-SocketIO</li>
         <li>前端：Jinja2 模板 + 原生 JavaScript + Canvas API + video.js</li>
-        <li>数据库：SQLite</li>
+        <li>数据库：SQLite + Flask-Migrate</li>
         <li>实时通信：WebSocket（弹幕）</li>
+        <li>测试：pytest</li>
         <li>图标：Font Awesome</li>
     </ul>
 </div>
@@ -19,10 +20,13 @@
 <div class="card mt-2">
     <h3><i class="fas fa-check-circle"></i> 功能</h3>
     <ul style="padding-left:1.5rem; margin-top:0.5rem;">
-        <li>用户注册与登录（JWT + Session）</li>
+        <li>用户注册与登录（JWT + Session 双认证）</li>
         <li>视频上传与播放（支持 20GB 大文件）</li>
-        <li>弹幕系统（滚动/顶部/底部三种模式，实时 WebSocket）</li>
-        <li>头像上传与选择</li>
+        <li>弹幕系统（滚动/顶部/底部，8 色可选，实时 WebSocket）</li>
+        <li>视频互动（点赞、投币、收藏、分享）</li>
+        <li>关注/取关 + 动态推送</li>
+        <li>用户空间（投稿列表 + 动态时间线）</li>
+        <li>头像上传与图片库选择</li>
         <li>个人中心（视频管理 + 密码修改）</li>
         <li>联系我们留言</li>
     </ul>
