@@ -21,17 +21,17 @@
       <label for="video_file">选择视频文件 *</label>
       <input type="file" id="video_file" name="video_file" accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/x-flv" required>
       <span class="error-text">请选择视频文件</span>
-      <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:4px;">
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">
         支持 mp4, webm, mkv, avi, mov, flv 格式，最大 20GB
       </div>
     </div>
 
     <div class="form-group" id="progressGroup" style="display:none;">
       <label>上传进度</label>
-      <div style="background:var(--color-border);border-radius:4px;height:6px;overflow:hidden;">
-        <div id="progressBar" style="background:var(--color-primary);height:100%;width:0%;transition:width 0.3s;"></div>
+      <div style="background:var(--border-color);border-radius:4px;height:6px;overflow:hidden;">
+        <div id="progressBar" style="background:var(--primary-color);height:100%;width:0%;transition:width 0.3s;"></div>
       </div>
-      <span id="progressText" style="font-size:0.8rem;color:var(--color-text-muted);"></span>
+      <span id="progressText" style="font-size:0.8rem;color:var(--text-muted);"></span>
     </div>
 
     <button type="submit" class="btn btn-primary" id="submitBtn">
