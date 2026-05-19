@@ -52,7 +52,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    avatar = db.Column(db.String(200), default='default-avatar.png')
+    avatar = db.Column(db.String(200), default='default-avatar.GIF')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -121,8 +121,11 @@ def inject_user():
 # ========== 页面路由 ==========
 @app.route('/')
 def index():
-    videos = Video.query.order_by(Video.created_at.desc()).all()
-    return render_template('index.html', videos=videos)
+    page = request.args.get('page', 1, type=int)
+    pagination = Video.query.order_by(Video.created_at.desc())\
+        .paginate(page=page, per_page=12, error_out=False)
+    return render_template('index.html',
+        videos=pagination.items, pagination=pagination)
 
 
 @app.route('/login-page')
@@ -142,12 +145,14 @@ def about():
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    logging.info("Contact page accessed")
     if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        message = request.form['message']
-        logging.info(f"Contact form: {name} - {email}: {message}")
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        message = request.form.get('message', '').strip()
+        if not name or not email or not message:
+            flash('请填写所有必填字段', 'error')
+            return render_template('contact.html')
+        logging.info("Contact form: %s - %s: %s", name, email, message)
         flash('留言提交成功，感谢你的反馈！', 'success')
         return render_template('contact.html', success=True)
     return render_template('contact.html')
@@ -156,8 +161,14 @@ def contact():
 @app.route('/profile')
 def profile():
     if 'user_id' not in session:
-        return redirect(url_for('login_page'))
-    return render_template('profile.html')
+        next_url = request.path
+        return redirect(url_for('login_page', next=next_url))
+    user = User.query.get(session['user_id'])
+    user_videos = Video.query.filter_by(user_id=user.id)\
+        .order_by(Video.created_at.desc()).all()
+    total_views = sum(v.views for v in user_videos)
+    return render_template('profile.html',
+        user=user, user_videos=user_videos, total_views=total_views)
 
 
 @app.route('/logout')
@@ -178,7 +189,8 @@ def video_page(video_id):
 @app.route('/upload-video', methods=['GET', 'POST'])
 def upload_video():
     if 'user_id' not in session:
-        return redirect(url_for('login_page'))
+        next_url = request.path
+        return redirect(url_for('login_page', next=next_url))
 
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -244,7 +256,8 @@ def register():
 
     session['user_id'] = user.id
     session['username'] = user.username
-    return jsonify({'message': '注册成功'}), 201
+    access_token = create_access_token(identity=str(user.id))
+    return jsonify({'message': '注册成功', 'access_token': access_token}), 201
 
 
 @app.route('/login', methods=['POST'])
@@ -268,7 +281,8 @@ def login():
 @app.route('/choose-avatar')
 def choose_avatar():
     if 'user_id' not in session:
-        return redirect(url_for('login_page'))
+        next_url = request.path
+        return redirect(url_for('login_page', next=next_url))
 
     images_dir = os.path.join(app.static_folder, 'images')
     allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
@@ -288,7 +302,8 @@ def choose_avatar():
 @app.route('/upload-avatar', methods=['GET', 'POST'])
 def upload_avatar():
     if 'user_id' not in session:
-        return redirect(url_for('login_page'))
+        next_url = request.path
+        return redirect(url_for('login_page', next=next_url))
 
     user = User.query.get(session['user_id'])
 
@@ -464,7 +479,53 @@ def get_danmakus(video_id):
     })
 
 
+# ========== 视频管理 API ==========
+@app.route('/video/<int:video_id>/delete', methods=['POST'])
+def delete_video(video_id):
+    if 'user_id' not in session:
+        next_url = request.path
+        return redirect(url_for('login_page', next=next_url))
+    video = Video.query.get_or_404(video_id)
+    if video.user_id != session['user_id']:
+        flash('无权删除此视频', 'error')
+        return redirect(url_for('video_page', video_id=video_id))
+    Danmaku.query.filter_by(video_id=video_id).delete()
+    filepath = os.path.join(VIDEO_UPLOAD_FOLDER, video.filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    db.session.delete(video)
+    db.session.commit()
+    flash('视频已删除', 'info')
+    return redirect(url_for('index'))
+
+
+@app.route('/api/change-password', methods=['POST'])
+def change_password():
+    if 'user_id' not in session:
+        return jsonify({'error': '未登录'}), 401
+    data = request.get_json()
+    old_pw = data.get('old_password', '')
+    new_pw = data.get('new_password', '')
+    if not old_pw or not new_pw:
+        return jsonify({'error': '请填写原密码和新密码'}), 400
+    if len(new_pw) < 6:
+        return jsonify({'error': '新密码至少6位'}), 400
+    user = User.query.get(session['user_id'])
+    if not user.check_password(old_pw):
+        return jsonify({'error': '原密码错误'}), 403
+    user.set_password(new_pw)
+    db.session.commit()
+    return jsonify({'message': '密码修改成功'})
+
+
 # ========== 错误处理 ==========
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', code=400,
+        title='请求无效',
+        message='请求包含无效参数，请检查后重试。'), 400
+
+
 @app.errorhandler(404)
 def not_found(e):
     return render_template('error.html', code=404,

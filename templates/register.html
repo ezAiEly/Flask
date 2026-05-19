@@ -54,6 +54,9 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         return;
     }
 
+    var params = new URLSearchParams(window.location.search);
+    var nextUrl = params.get('next') || '/';
+
     try {
         var response = await fetch('/register', {
             method: 'POST',
@@ -62,8 +65,11 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         });
         var result = await response.json();
         if (response.ok) {
+            if (result.access_token) {
+                localStorage.setItem('access_token', result.access_token);
+            }
             showToast('注册成功！正在跳转...', 'success');
-            setTimeout(function() { window.location.href = '/'; }, 600);
+            setTimeout(function() { window.location.href = nextUrl; }, 600);
         } else {
             showToast(result.error || '注册失败', 'error');
         }

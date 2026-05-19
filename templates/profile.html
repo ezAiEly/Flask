@@ -1,34 +1,131 @@
-<!-- profile.html -->
 {% extends "base.html" %}
 {% block title %}个人资料{% endblock %}
 {% block content %}
 <h1>个人资料</h1>
 
 <div class="profile-header">
-    {% if current_user.avatar %}
-        {% if '/' in current_user.avatar %}
-            <img class="profile-avatar" src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
-        {% else %}
-            <img class="profile-avatar" src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
-        {% endif %}
+  {% if current_user.avatar %}
+    {% if '/' in current_user.avatar %}
+      <img class="profile-avatar" src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
     {% else %}
-        <div class="avatar-placeholder" style="width:100px;height:100px;font-size:36px;">{{ current_user.username[0] | upper }}</div>
+      <img class="profile-avatar" src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
     {% endif %}
-    <div class="profile-info">
-        <h1>{{ current_user.username }}</h1>
-        <p><i class="fas fa-envelope"></i> {{ current_user.email }}</p>
-    </div>
+  {% else %}
+    <div class="avatar-placeholder" style="width:100px;height:100px;font-size:36px;">{{ current_user.username[0] | upper }}</div>
+  {% endif %}
+  <div class="profile-info">
+    <h1>{{ current_user.username }}</h1>
+    <p><i class="fas fa-envelope"></i> {{ current_user.email }}</p>
+    <p><i class="fas fa-video"></i> {{ user_videos|length }} 个视频 · <i class="fas fa-eye"></i> {{ total_views }} 次播放</p>
+  </div>
 </div>
 
 <div class="card mb-2">
-    <h3>账号信息</h3>
-    <p class="text-muted">用户名：{{ current_user.username }}</p>
-    <p class="text-muted">邮箱：{{ current_user.email }}</p>
-    <p class="text-muted">用户ID：{{ current_user.id }}</p>
+  <h3>账号信息</h3>
+  <p class="text-muted">用户名：{{ current_user.username }}</p>
+  <p class="text-muted">邮箱：{{ current_user.email }}</p>
+  <p class="text-muted">注册时间：暂未记录</p>
 </div>
 
-<div style="display:flex; gap:1rem;">
-    <a href="{{ url_for('upload_avatar') }}" class="btn btn-outline"><i class="fas fa-camera"></i> 更换头像</a>
-    <a href="{{ url_for('choose_avatar') }}" class="btn btn-outline"><i class="fas fa-images"></i> 选择头像</a>
+<div style="display:flex; gap:1rem; flex-wrap:wrap;">
+  <a href="{{ url_for('upload_avatar') }}" class="btn btn-outline"><i class="fas fa-camera"></i> 更换头像</a>
+  <a href="{{ url_for('choose_avatar') }}" class="btn btn-outline"><i class="fas fa-images"></i> 选择头像</a>
 </div>
+
+<!-- 修改密码 -->
+<div class="card mt-2">
+  <h3><i class="fas fa-key"></i> 修改密码</h3>
+  <form id="passwordForm" style="max-width:360px; margin-top:12px;">
+    <div class="form-group">
+      <label for="oldPassword">原密码</label>
+      <input type="password" id="oldPassword" placeholder="输入原密码" required>
+      <span class="error-text"></span>
+    </div>
+    <div class="form-group">
+      <label for="newPassword">新密码</label>
+      <input type="password" id="newPassword" placeholder="至少6位" minlength="6" required>
+      <span class="error-text"></span>
+    </div>
+    <button type="submit" class="btn btn-primary" id="pwBtn">
+      <span class="btn-text">修改密码</span>
+      <span class="spinner hidden" id="pwSpinner"></span>
+    </button>
+  </form>
+</div>
+
+<!-- 我的视频 -->
+<h2 class="mt-3">我的视频</h2>
+{% if user_videos %}
+<div class="video-grid">
+  {% for v in user_videos %}
+  <div class="video-card">
+    <a href="{{ url_for('video_page', video_id=v.id) }}" style="text-decoration:none;color:inherit;">
+      <div class="video-card-thumb">
+        <i class="fas fa-play-circle"></i>
+      </div>
+      <div class="video-card-body">
+        <h3>{{ v.title }}</h3>
+        <div class="meta">
+          <span><i class="fas fa-eye"></i> {{ v.views }}</span>
+          <span><i class="fas fa-clock"></i> {{ v.created_at.strftime('%m-%d') }}</span>
+        </div>
+      </div>
+    </a>
+    <div style="padding:0 16px 12px;">
+      <form method="POST" action="{{ url_for('delete_video', video_id=v.id) }}"
+            onsubmit="return confirm('确定删除视频「{{ v.title }}」？此操作不可撤销。');">
+        <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> 删除</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">还没有上传过视频。</p>
+<a href="{{ url_for('upload_video') }}" class="btn btn-primary mt-1"><i class="fas fa-cloud-upload-alt"></i> 上传第一个视频</a>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('passwordForm');
+  var btn = document.getElementById('pwBtn');
+  var btnText = btn.querySelector('.btn-text');
+  var spinner = document.getElementById('pwSpinner');
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var oldPw = document.getElementById('oldPassword').value;
+    var newPw = document.getElementById('newPassword').value;
+    if (!oldPw || !newPw) { showToast('请填写所有字段', 'error'); return; }
+    if (newPw.length < 6) { showToast('新密码至少6位', 'error'); return; }
+
+    btn.disabled = true;
+    btnText.textContent = '修改中...';
+    spinner.classList.remove('hidden');
+
+    try {
+      var resp = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: oldPw, new_password: newPw })
+      });
+      var result = await resp.json();
+      if (resp.ok) {
+        showToast('密码修改成功', 'success');
+        form.reset();
+      } else {
+        showToast(result.error || '修改失败', 'error');
+      }
+    } catch (err) {
+      showToast('网络请求失败', 'error');
+    } finally {
+      btn.disabled = false;
+      btnText.textContent = '修改密码';
+      spinner.classList.add('hidden');
+    }
+  });
+})();
+</script>
 {% endblock %}

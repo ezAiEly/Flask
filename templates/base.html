@@ -38,7 +38,7 @@
                 {% if current_user %}
                     <a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
                     <a href="{{ url_for('upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
-                    <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> 退出</a>
+                    <a href="{{ url_for('logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
                 {% else %}
                     <a href="{{ url_for('login_page') }}"><i class="fas fa-sign-in-alt"></i> 登录</a>
                     <a href="{{ url_for('register_page') }}"><i class="fas fa-user-plus"></i> 注册</a>

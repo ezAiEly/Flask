@@ -39,6 +39,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         username: document.getElementById('username').value.trim(),
         password: document.getElementById('password').value
     };
+    var params = new URLSearchParams(window.location.search);
+    var nextUrl = params.get('next') || '/';
     try {
         var response = await fetch('/login', {
             method: 'POST',
@@ -49,7 +51,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         if (response.ok) {
             localStorage.setItem('access_token', result.access_token);
             showToast('登录成功，正在跳转...', 'success');
-            setTimeout(function() { window.location.href = '/'; }, 600);
+            setTimeout(function() { window.location.href = nextUrl; }, 600);
         } else {
             showToast(result.error || '登录失败', 'error');
         }

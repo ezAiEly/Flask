@@ -26,6 +26,14 @@
   {% if video.description %}
   <p class="video-desc">{{ video.description }}</p>
   {% endif %}
+  {% if current_user and current_user.id == video.user_id %}
+  <div style="margin-top:12px;">
+    <form method="POST" action="{{ url_for('delete_video', video_id=video.id) }}"
+          onsubmit="return confirm('确定删除视频「{{ video.title }}」？此操作不可撤销。');">
+      <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> 删除视频</button>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 <div class="danmaku-sender" id="danmakuSender">

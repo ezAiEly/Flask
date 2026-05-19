@@ -44,4 +44,16 @@
   <a href="{{ url_for('upload_video') }}" class="btn btn-outline"><i class="fas fa-cloud-upload-alt"></i> 上传新视频</a>
 </div>
 {% endif %}
+
+{% if pagination and pagination.pages > 1 %}
+<div class="pagination mt-2 text-center">
+  {% if pagination.has_prev %}
+  <a href="{{ url_for('index', page=pagination.prev_num) }}" class="btn btn-sm btn-outline">&laquo; 上一页</a>
+  {% endif %}
+  <span class="text-muted" style="margin:0 12px;line-height:2;">{{ pagination.page }} / {{ pagination.pages }}</span>
+  {% if pagination.has_next %}
+  <a href="{{ url_for('index', page=pagination.next_num) }}" class="btn btn-sm btn-outline">下一页 &raquo;</a>
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}
