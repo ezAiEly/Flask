@@ -1,41 +1,35 @@
 {% extends "base.html" %}
 {% block title %}个人资料{% endblock %}
 {% block content %}
-<h1>个人资料</h1>
 
-<div class="profile-header">
+<div class="user-space-header">
   {% if current_user.avatar %}
     {% if '/' in current_user.avatar %}
-      <img class="profile-avatar" src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
+      <div class="us-avatar"><img src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像"></div>
     {% else %}
-      <img class="profile-avatar" src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
+      <div class="us-avatar"><img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像"></div>
     {% endif %}
   {% else %}
-    <div class="avatar-placeholder" style="width:100px;height:100px;font-size:36px;">{{ current_user.username[0] | upper }}</div>
+    <div class="us-avatar"><div class="avatar-placeholder" style="width:80px;height:80px;font-size:30px;">{{ current_user.username[0] | upper }}</div></div>
   {% endif %}
-  <div class="profile-info">
+  <div class="us-info">
     <h1>{{ current_user.username }}</h1>
-    <p><i class="fas fa-envelope"></i> {{ current_user.email }}</p>
-    <p><i class="fas fa-video"></i> {{ user_videos|length }} 个视频 · <i class="fas fa-eye"></i> {{ total_views }} 次播放</p>
+    <p class="us-bio"><i class="fas fa-envelope"></i> {{ current_user.email }}</p>
+    <div class="us-stats">
+      <span><strong>{{ user_videos|length }}</strong> 视频</span>
+      <span><strong>{{ total_views }}</strong> 播放</span>
+    </div>
+  </div>
+  <div class="us-actions">
+    <a href="{{ url_for('main.upload_avatar') }}" class="btn btn-outline btn-sm"><i class="fas fa-camera"></i> 换头像</a>
+    <a href="{{ url_for('video.upload_video') }}" class="btn btn-primary btn-sm" style="width:auto;margin-left:8px;"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
   </div>
 </div>
 
-<div class="card mb-2">
-  <h3>账号信息</h3>
-  <p class="text-muted">用户名：{{ current_user.username }}</p>
-  <p class="text-muted">邮箱：{{ current_user.email }}</p>
-  <p class="text-muted">注册时间：暂未记录</p>
-</div>
-
-<div style="display:flex; gap:1rem; flex-wrap:wrap;">
-  <a href="{{ url_for('main.upload_avatar') }}" class="btn btn-outline"><i class="fas fa-camera"></i> 更换头像</a>
-  <a href="{{ url_for('main.choose_avatar') }}" class="btn btn-outline"><i class="fas fa-images"></i> 选择头像</a>
-</div>
-
 <!-- 修改密码 -->
-<div class="card mt-2">
-  <h3><i class="fas fa-key"></i> 修改密码</h3>
-  <form id="passwordForm" style="max-width:360px; margin-top:12px;">
+<div class="card mb-2">
+  <h3 style="margin-bottom:0.75rem;"><i class="fas fa-key"></i> 修改密码</h3>
+  <form id="passwordForm" style="max-width:360px;">
     <div class="form-group">
       <label for="oldPassword">原密码</label>
       <input type="password" id="oldPassword" placeholder="输入原密码" required>
@@ -46,7 +40,7 @@
       <input type="password" id="newPassword" placeholder="至少6位" minlength="6" required>
       <span class="error-text"></span>
     </div>
-    <button type="submit" class="btn btn-primary" id="pwBtn">
+    <button type="submit" class="btn btn-primary" id="pwBtn" style="width:auto;">
       <span class="btn-text">修改密码</span>
       <span class="spinner hidden" id="pwSpinner"></span>
     </button>
@@ -54,7 +48,7 @@
 </div>
 
 <!-- 我的视频 -->
-<h2 class="mt-3">我的视频</h2>
+<h2 class="section-title" style="margin-top:1.5rem;">我的视频</h2>
 {% if user_videos %}
 <div class="video-grid">
   {% for v in user_videos %}
@@ -77,18 +71,14 @@
         </div>
       </div>
     </a>
-    <div style="padding:0 16px 12px;">
-      <form method="POST" action="{{ url_for('video.delete_video', video_id=v.id) }}"
-            onsubmit="return confirm('确定删除视频「{{ v.title }}」？此操作不可撤销。');">
-        <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> 删除</button>
-      </form>
-    </div>
   </div>
   {% endfor %}
 </div>
 {% else %}
-<p class="text-muted">还没有上传过视频。</p>
-<a href="{{ url_for('video.upload_video') }}" class="btn btn-primary mt-1"><i class="fas fa-cloud-upload-alt"></i> 上传第一个视频</a>
+<div class="text-center mt-2">
+  <p class="text-muted mb-1">还没有上传过视频</p>
+  <a href="{{ url_for('video.upload_video') }}" class="btn btn-primary"><i class="fas fa-cloud-upload-alt"></i> 上传第一个视频</a>
+</div>
 {% endif %}
 {% endblock %}
 

@@ -95,16 +95,16 @@
         <a href="{{ url_for('main.user_space', username=f.actor.username) }}" class="feed-actor">{{ f.actor.username }}</a>
         {% if f.action == 'upload' %}
           投稿了视频
-          {% if f.video %}<a href="{{ url_for('video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+          {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
         {% elif f.action == 'like' %}
           点赞了视频
-          {% if f.video %}<a href="{{ url_for('video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+          {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
         {% elif f.action == 'coin' %}
           投币了视频
-          {% if f.video %}<a href="{{ url_for('video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+          {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
         {% elif f.action == 'favorite' %}
           收藏了视频
-          {% if f.video %}<a href="{{ url_for('video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+          {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
         {% else %}
           发布了动态
         {% endif %}

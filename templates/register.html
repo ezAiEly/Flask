@@ -3,25 +3,29 @@
 {% block title %}注册{% endblock %}
 {% block content %}
 <div class="form-container">
-    <h1><i class="fas fa-user-plus"></i> 用户注册</h1>
+    <div class="form-brand" style="text-align:center;margin-bottom:1.5rem;">
+      <i class="fas fa-play-circle" style="font-size:2.5rem;color:var(--pink-color);display:block;margin-bottom:0.25rem;"></i>
+      <h1 style="font-size:1.3rem;font-weight:600;margin:0;">加入视频社区</h1>
+      <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;">注册账号，开启你的视频之旅</p>
+    </div>
     <form id="registerForm" novalidate>
         <div class="form-group">
-            <label for="username">用户名</label>
-            <input type="text" id="username" placeholder="请输入用户名" required>
+            <label for="username"><i class="fas fa-user"></i> 用户名</label>
+            <input type="text" id="username" placeholder="请输入用户名" required autocomplete="username">
             <span class="error-text" data-for="username"></span>
         </div>
         <div class="form-group">
-            <label for="email">邮箱</label>
-            <input type="email" id="email" placeholder="请输入邮箱" required>
+            <label for="email"><i class="fas fa-envelope"></i> 邮箱</label>
+            <input type="email" id="email" placeholder="请输入邮箱" required autocomplete="email">
             <span class="error-text" data-for="email"></span>
         </div>
         <div class="form-group">
-            <label for="password">密码</label>
-            <input type="password" id="password" placeholder="请输入密码" minlength="6" required>
+            <label for="password"><i class="fas fa-lock"></i> 密码</label>
+            <input type="password" id="password" placeholder="至少6位密码" minlength="6" required autocomplete="new-password">
             <span class="error-text" data-for="password"></span>
         </div>
-        <button type="submit" class="btn btn-primary" id="submitBtn">
-            <span class="btn-text">注册</span>
+        <button type="submit" class="btn btn-primary" id="submitBtn" style="background:var(--pink-color);">
+            <span class="btn-text"><i class="fas fa-user-plus"></i> 注册</span>
             <span class="spinner hidden" id="spinner"></span>
         </button>
     </form>
@@ -37,7 +41,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     var btnText = btn.querySelector('.btn-text');
     var spinner = document.getElementById('spinner');
     btn.disabled = true;
-    btnText.textContent = '注册中...';
+    btnText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 注册中...';
     spinner.classList.remove('hidden');
 
     var data = {
@@ -49,7 +53,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     if (data.password.length < 6) {
         showToast('密码长度至少6位', 'error');
         btn.disabled = false;
-        btnText.textContent = '注册';
+        btnText.innerHTML = '<i class="fas fa-user-plus"></i> 注册';
         spinner.classList.add('hidden');
         return;
     }
@@ -77,7 +81,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         showToast('网络请求失败：' + error, 'error');
     } finally {
         btn.disabled = false;
-        btnText.textContent = '注册';
+        btnText.innerHTML = '<i class="fas fa-user-plus"></i> 注册';
         spinner.classList.add('hidden');
     }
 });

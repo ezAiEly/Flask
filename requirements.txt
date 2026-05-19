@@ -14,3 +14,5 @@ eventlet==0.41.0
 Flask-Migrate==4.1.0
 python-dotenv==1.2.2
 pytest==9.0.3
+Flask-WTF==1.2.2
+Pillow==11.3.0

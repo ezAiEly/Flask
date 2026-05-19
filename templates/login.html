@@ -3,20 +3,23 @@
 {% block title %}登录{% endblock %}
 {% block content %}
 <div class="form-container">
-    <h1><i class="fas fa-sign-in-alt"></i> 用户登录</h1>
+    <div class="form-brand" style="text-align:center;margin-bottom:1.5rem;">
+      <i class="fas fa-play-circle" style="font-size:2.5rem;color:var(--primary-color);display:block;margin-bottom:0.25rem;"></i>
+      <h1 style="font-size:1.3rem;font-weight:600;margin:0;">登录视频社区</h1>
+    </div>
     <form id="loginForm" novalidate>
         <div class="form-group">
-            <label for="username">用户名</label>
-            <input type="text" id="username" placeholder="请输入用户名" required>
+            <label for="username"><i class="fas fa-user"></i> 用户名</label>
+            <input type="text" id="username" placeholder="请输入用户名" required autocomplete="username">
             <span class="error-text" data-for="username"></span>
         </div>
         <div class="form-group">
-            <label for="password">密码</label>
-            <input type="password" id="password" placeholder="请输入密码" required>
+            <label for="password"><i class="fas fa-lock"></i> 密码</label>
+            <input type="password" id="password" placeholder="请输入密码" required autocomplete="current-password">
             <span class="error-text" data-for="password"></span>
         </div>
         <button type="submit" class="btn btn-primary" id="submitBtn">
-            <span class="btn-text">登录</span>
+            <span class="btn-text"><i class="fas fa-sign-in-alt"></i> 登录</span>
             <span class="spinner hidden" id="spinner"></span>
         </button>
     </form>
@@ -32,7 +35,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     var btnText = btn.querySelector('.btn-text');
     var spinner = document.getElementById('spinner');
     btn.disabled = true;
-    btnText.textContent = '登录中...';
+    btnText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 登录中...';
     spinner.classList.remove('hidden');
 
     var data = {
@@ -59,7 +62,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         showToast('网络请求失败：' + error, 'error');
     } finally {
         btn.disabled = false;
-        btnText.textContent = '登录';
+        btnText.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
         spinner.classList.add('hidden');
     }
 });
