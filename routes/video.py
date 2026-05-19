@@ -1,10 +1,12 @@
 import os
 import uuid
+import datetime
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify, current_app)
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite
+from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView
 from models import allowed_video_file, push_feed, get_video_duration
+from models import get_recommendations, _fallback_hot, get_hot_videos
 
 video_bp = Blueprint('video', __name__)
 
@@ -13,6 +15,17 @@ video_bp = Blueprint('video', __name__)
 def video_page(video_id):
     video = Video.query.get_or_404(video_id)
     video.views += 1
+
+    user_id = session.get('user_id')
+    if user_id:
+        existing = VideoView.query.filter_by(
+            user_id=user_id, video_id=video_id
+        ).first()
+        if existing:
+            existing.viewed_at = datetime.datetime.utcnow()
+        else:
+            db.session.add(VideoView(user_id=user_id, video_id=video_id))
+
     db.session.commit()
     return render_template('video.html', video=video)
 
@@ -199,3 +212,70 @@ def toggle_favorite(video_id):
     db.session.commit()
     count = VideoFavorite.query.filter_by(video_id=video_id).count()
     return jsonify({'favorited': True, 'favorite_count': count})
+
+
+# ── 序列化辅助 ───────────────────────────────────────────
+
+def _serialize_video(v):
+    return {
+        'id': v.id,
+        'title': v.title,
+        'description': v.description,
+        'filename': v.filename,
+        'src': v.src,
+        'duration': v.duration,
+        'duration_hms': v.duration_hms,
+        'views': v.views,
+        'tags': [t.strip() for t in v.tags.split(',') if t.strip()] if v.tags else [],
+        'created_at': v.created_at.isoformat(),
+        'author': {
+            'id': v.user.id,
+            'username': v.user.username,
+            'avatar': v.user.avatar,
+        },
+    }
+
+
+# ── 推荐 API ─────────────────────────────────────────────
+
+@video_bp.route('/api/videos/recommend')
+def recommend_videos():
+    user_id = session.get('user_id')
+    page = request.args.get('page', 1, type=int)
+    limit = min(request.args.get('limit', 12, type=int), 50)
+    offset = (page - 1) * limit
+
+    fn = get_recommendations if user_id else _fallback_hot
+    result = fn(user_id, limit * page) if user_id else _fallback_hot(limit * page)
+    # 切片实现分页
+    items = result[offset:offset + limit]
+    has_more = len(result) > offset + limit
+
+    return jsonify({
+        'videos': [{
+            **_serialize_video(v),
+            'danmaku_count': danmaku_count,
+        } for v, _pop, danmaku_count in items],
+        'page': page,
+        'has_more': has_more,
+    })
+
+
+# ── 热门 API ─────────────────────────────────────────────
+
+@video_bp.route('/api/videos/hot')
+def hot_videos():
+    page = request.args.get('page', 1, type=int)
+    limit = min(request.args.get('limit', 12, type=int), 50)
+
+    items, total = get_hot_videos(page=page, per_page=limit)
+
+    return jsonify({
+        'videos': [{
+            **_serialize_video(v),
+            'danmaku_count': danmaku_count,
+        } for v, _pop, danmaku_count in items],
+        'page': page,
+        'total': total,
+        'has_more': (page * limit) < total,
+    })

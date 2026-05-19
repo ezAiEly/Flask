@@ -1,4 +1,4 @@
-# 视频社区网站
+# 视频社区网站（AI生成）
 
 一个类 B 站风格的视频社区，基于 Flask + SQLite + SocketIO。
 

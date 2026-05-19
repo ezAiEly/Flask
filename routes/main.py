@@ -11,11 +11,7 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
-    page = request.args.get('page', 1, type=int)
-    pagination = Video.query.order_by(Video.created_at.desc())\
-        .paginate(page=page, per_page=12, error_out=False)
-    return render_template('index.html',
-        videos=pagination.items, pagination=pagination)
+    return render_template('index.html')
 
 
 @main_bp.route('/about')

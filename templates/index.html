@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}首页{% endblock %}
 {% block content %}
+
 {% if current_user %}
 <div class="card mb-2" style="background: var(--color-primary-light); border-color: #bfdbfe;">
   <h2>欢迎回来，{{ current_user.username }}！</h2>
@@ -8,32 +9,23 @@
 </div>
 {% endif %}
 
-{% if videos %}
-<div class="video-grid">
-  {% for v in videos %}
-  <a href="{{ url_for('video.video_page', video_id=v.id) }}" class="video-card">
-    <div class="video-card-thumb">
-      <i class="fas fa-play-circle"></i>
-      {% if v.duration_hms %}
-      <span class="video-card-duration">{{ v.duration_hms }}</span>
-      {% endif %}
-    </div>
-    <div class="video-card-body">
-      <h3>{{ v.title }}</h3>
-      <div class="meta">
-        <span><i class="fas fa-user"></i> <a href="{{ url_for('main.user_space', username=v.user.username) }}" onclick="event.stopPropagation();">{{ v.user.username }}</a></span>
-        <span><i class="fas fa-eye"></i> {{ v.views }}</span>
-        <span><i class="fas fa-clock"></i> {{ v.created_at.strftime('%m-%d') }}</span>
-        {% if v.file_size_mb %}
-        <span>{{ v.file_size_mb }} MB</span>
-        {% endif %}
-      </div>
-    </div>
-  </a>
-  {% endfor %}
+<div class="home-tabs">
+  <button class="home-tab active" data-tab="recommend">推荐</button>
+  <button class="home-tab" data-tab="hot">热门</button>
 </div>
-{% else %}
-<div class="text-center mt-3">
+
+<div class="video-grid" id="videoGrid"></div>
+
+<div class="home-status text-center mt-2" id="homeStatus">
+  <div class="spinner spinner-dark"></div>
+  <p class="text-muted">加载中…</p>
+</div>
+
+<div class="text-center mt-2 hidden" id="loadMoreWrap">
+  <button class="btn btn-outline" id="loadMoreBtn">加载更多</button>
+</div>
+
+<div class="text-center mt-3 hidden" id="emptyState">
   <i class="fas fa-video" style="font-size:4rem;color:var(--color-border);"></i>
   <h2 style="margin:1rem 0 0.5rem;">还没有视频</h2>
   <p class="text-muted">成为第一个上传视频的人吧！</p>
@@ -43,23 +35,9 @@
   <a href="{{ url_for('auth.login_page') }}" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> 登录后上传</a>
   {% endif %}
 </div>
-{% endif %}
 
-{% if current_user and videos %}
-<div class="text-center mt-3">
-  <a href="{{ url_for('video.upload_video') }}" class="btn btn-outline"><i class="fas fa-cloud-upload-alt"></i> 上传新视频</a>
-</div>
-{% endif %}
+{% endblock %}
 
-{% if pagination and pagination.pages > 1 %}
-<div class="pagination mt-2 text-center">
-  {% if pagination.has_prev %}
-  <a href="{{ url_for('main.index', page=pagination.prev_num) }}" class="btn btn-sm btn-outline">&laquo; 上一页</a>
-  {% endif %}
-  <span class="text-muted" style="margin:0 12px;line-height:2;">{{ pagination.page }} / {{ pagination.pages }}</span>
-  {% if pagination.has_next %}
-  <a href="{{ url_for('main.index', page=pagination.next_num) }}" class="btn btn-sm btn-outline">下一页 &raquo;</a>
-  {% endif %}
-</div>
-{% endif %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
 {% endblock %}

@@ -24,5 +24,19 @@ __pycache__/
 # Claude
 .claude/
 
-# 其他
-.DS_Store
+# 媒体文件（不纳入版本控制）
+static/videos/*
+static/images/*
+*.mp4
+*.webm
+*.mkv
+*.avi
+*.mov
+*.flv
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.bmp
+*.ico
