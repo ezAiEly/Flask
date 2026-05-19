@@ -1,7 +1,7 @@
 import os
 import uuid
 import datetime
-from flask import (Blueprint, render_template, request, session,
+from flask import (Blueprint, render_template, request, session, abort,
                    redirect, url_for, flash, jsonify, current_app)
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView, Tag
@@ -13,7 +13,9 @@ video_bp = Blueprint('video', __name__)
 
 @video_bp.route('/video/<int:video_id>')
 def video_page(video_id):
-    video = Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
     video.views += 1
 
     user_id = session.get('user_id')
@@ -89,7 +91,9 @@ def upload_video():
 def delete_video(video_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login_page', next=request.path))
-    video = Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
     if video.user_id != session['user_id']:
         flash('无权删除此视频', 'error')
         return redirect(url_for('video.video_page', video_id=video_id))
@@ -126,7 +130,9 @@ def get_danmakus(video_id):
 
 @video_bp.route('/api/video/<int:video_id>/interactions')
 def get_interactions(video_id):
-    video = Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
     user_id = session.get('user_id')
 
     total_coins = db.session.query(
@@ -154,7 +160,9 @@ def toggle_like(video_id):
     if 'user_id' not in session:
         return jsonify({'error': '请先登录'}), 401
     user_id = session['user_id']
-    Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
 
     existing = VideoLike.query.filter_by(user_id=user_id, video_id=video_id).first()
     if existing:
@@ -176,7 +184,9 @@ def coin_video(video_id):
     if 'user_id' not in session:
         return jsonify({'error': '请先登录'}), 401
     user_id = session['user_id']
-    Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
 
     data = request.get_json() or {}
     count = data.get('count', 1)
@@ -204,7 +214,9 @@ def toggle_favorite(video_id):
     if 'user_id' not in session:
         return jsonify({'error': '请先登录'}), 401
     user_id = session['user_id']
-    Video.query.get_or_404(video_id)
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
 
     existing = VideoFavorite.query.filter_by(user_id=user_id, video_id=video_id).first()
     if existing:

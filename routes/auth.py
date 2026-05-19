@@ -77,7 +77,7 @@ def change_password():
         return jsonify({'error': '请填写原密码和新密码'}), 400
     if len(new_pw) < 6:
         return jsonify({'error': '新密码至少6位'}), 400
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user.check_password(old_pw):
         return jsonify({'error': '原密码错误'}), 403
     user.set_password(new_pw)

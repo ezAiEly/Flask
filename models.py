@@ -86,7 +86,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    avatar = db.Column(db.String(200), default='default-avatar.GIF')
+    avatar = db.Column(db.String(200), default='images/default-avatar.GIF')
     bio = db.Column(db.String(200), default='')
     is_system = db.Column(db.Boolean, default=False)
 
@@ -231,7 +231,7 @@ class Feed(db.Model):
 # ── Feed 推送 ────────────────────────────────────────────
 
 def push_feed(actor_id, action, video_id):
-    actor = User.query.get(actor_id)
+    actor = db.session.get(User, actor_id)
     if not actor:
         return
     for follower in actor.followers_ref:

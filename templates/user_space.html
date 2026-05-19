@@ -142,7 +142,10 @@
     followBtn.addEventListener('click', async function () {
       var isFollowing = followBtn.dataset.following === '1';
       try {
-        var resp = await fetch('/api/user/{{ space_user.id }}/follow', { method: 'POST' });
+        var resp = await fetch('/api/user/{{ space_user.id }}/follow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
         var data = await resp.json();
         if (resp.ok) {
           followBtn.dataset.following = data.following ? '1' : '0';

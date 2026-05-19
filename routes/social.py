@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User
 
@@ -13,8 +13,10 @@ def toggle_follow(target_id):
     if user_id == target_id:
         return jsonify({'error': '不能关注自己'}), 400
 
-    user = User.query.get(user_id)
-    target = User.query.get_or_404(target_id)
+    user = db.session.get(User, user_id)
+    target = db.session.get(User, target_id)
+    if target is None:
+        abort(404)
 
     if user.is_following(target):
         user.unfollow(target)
@@ -30,7 +32,7 @@ def toggle_follow(target_id):
 @jwt_required()
 def api_profile():
     user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     return jsonify({

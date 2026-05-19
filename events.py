@@ -41,7 +41,7 @@ def register_events(socketio):
         db.session.add(danmaku)
         db.session.commit()
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
 
         danmaku_data = {
             'id': danmaku.id,

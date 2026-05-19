@@ -14,7 +14,7 @@ from events import register_events
 logging.basicConfig(level=logging.INFO)
 
 jwt = JWTManager()
-socketio = SocketIO(cors_allowed_origins='*')
+socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 migrate = Migrate()
 csrf = CSRFProtect()
 
@@ -32,21 +32,22 @@ def create_app(config_name=None):
     csrf.init_app(app)
     socketio.init_app(app)
 
-    # ── CSRF 豁免 API 路由 ─────────────────────────────
-    @app.before_request
-    def _csrf_exempt_api():
-        if request.path.startswith('/api/') or request.is_json:
-            csrf.exempt()
-
     register_blueprints(app)
     register_events(socketio)
+
+    # ── CSRF 豁免 API 路由 ─────────────────────────────
+    for rule in app.url_map.iter_rules():
+        if rule.rule.startswith('/api/'):
+            view = app.view_functions.get(rule.endpoint)
+            if view:
+                csrf.exempt(view)
 
     # ── 上下文处理器 ──────────────────────────────────
     @app.context_processor
     def inject_user():
         user_id = session.get('user_id')
         if user_id:
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             return dict(current_user=user, now=datetime.datetime.now())
         return dict(current_user=None, now=datetime.datetime.now())
 

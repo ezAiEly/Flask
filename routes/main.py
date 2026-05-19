@@ -38,7 +38,7 @@ def contact():
 def profile():
     if 'user_id' not in session:
         return redirect(url_for('auth.login_page', next=request.path))
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     user_videos = Video.query.filter_by(user_id=user.id)\
         .order_by(Video.created_at.desc()).all()
     total_views = sum(v.views for v in user_videos)
@@ -69,7 +69,7 @@ def upload_avatar():
     if 'user_id' not in session:
         return redirect(url_for('auth.login_page', next=request.path))
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
 
     images_dir = os.path.join(current_app.static_folder, 'images')
     allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
@@ -131,7 +131,7 @@ def set_avatar():
     if not os.path.exists(full_path):
         return jsonify({'success': False, 'error': '图片文件不存在'}), 404
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return jsonify({'success': False, 'error': '用户不存在'}), 404
 
@@ -153,7 +153,7 @@ def user_space(username):
 
     is_following = False
     if current_id:
-        viewer = User.query.get(current_id)
+        viewer = db.session.get(User, current_id)
         is_following = viewer.is_following(space_user)
 
     return render_template('user_space.html',
