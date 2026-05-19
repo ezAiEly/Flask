@@ -11,7 +11,7 @@
 {% if videos %}
 <div class="video-grid">
   {% for v in videos %}
-  <a href="{{ url_for('video_page', video_id=v.id) }}" class="video-card">
+  <a href="{{ url_for('video.video_page', video_id=v.id) }}" class="video-card">
     <div class="video-card-thumb">
       <i class="fas fa-play-circle"></i>
       {% if v.duration_hms %}
@@ -21,7 +21,7 @@
     <div class="video-card-body">
       <h3>{{ v.title }}</h3>
       <div class="meta">
-        <span><i class="fas fa-user"></i> <a href="{{ url_for('user_space', username=v.user.username) }}" onclick="event.stopPropagation();">{{ v.user.username }}</a></span>
+        <span><i class="fas fa-user"></i> <a href="{{ url_for('main.user_space', username=v.user.username) }}" onclick="event.stopPropagation();">{{ v.user.username }}</a></span>
         <span><i class="fas fa-eye"></i> {{ v.views }}</span>
         <span><i class="fas fa-clock"></i> {{ v.created_at.strftime('%m-%d') }}</span>
         {% if v.file_size_mb %}
@@ -38,27 +38,27 @@
   <h2 style="margin:1rem 0 0.5rem;">还没有视频</h2>
   <p class="text-muted">成为第一个上传视频的人吧！</p>
   {% if current_user %}
-  <a href="{{ url_for('upload_video') }}" class="btn btn-primary mt-2"><i class="fas fa-cloud-upload-alt"></i> 上传视频</a>
+  <a href="{{ url_for('video.upload_video') }}" class="btn btn-primary mt-2"><i class="fas fa-cloud-upload-alt"></i> 上传视频</a>
   {% else %}
-  <a href="{{ url_for('login_page') }}" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> 登录后上传</a>
+  <a href="{{ url_for('auth.login_page') }}" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> 登录后上传</a>
   {% endif %}
 </div>
 {% endif %}
 
 {% if current_user and videos %}
 <div class="text-center mt-3">
-  <a href="{{ url_for('upload_video') }}" class="btn btn-outline"><i class="fas fa-cloud-upload-alt"></i> 上传新视频</a>
+  <a href="{{ url_for('video.upload_video') }}" class="btn btn-outline"><i class="fas fa-cloud-upload-alt"></i> 上传新视频</a>
 </div>
 {% endif %}
 
 {% if pagination and pagination.pages > 1 %}
 <div class="pagination mt-2 text-center">
   {% if pagination.has_prev %}
-  <a href="{{ url_for('index', page=pagination.prev_num) }}" class="btn btn-sm btn-outline">&laquo; 上一页</a>
+  <a href="{{ url_for('main.index', page=pagination.prev_num) }}" class="btn btn-sm btn-outline">&laquo; 上一页</a>
   {% endif %}
   <span class="text-muted" style="margin:0 12px;line-height:2;">{{ pagination.page }} / {{ pagination.pages }}</span>
   {% if pagination.has_next %}
-  <a href="{{ url_for('index', page=pagination.next_num) }}" class="btn btn-sm btn-outline">下一页 &raquo;</a>
+  <a href="{{ url_for('main.index', page=pagination.next_num) }}" class="btn btn-sm btn-outline">下一页 &raquo;</a>
   {% endif %}
 </div>
 {% endif %}
