@@ -22,7 +22,7 @@
       <input type="file" id="video_file" name="video_file" accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/x-flv" required>
       <span class="error-text">请选择视频文件</span>
       <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:4px;">
-        支持 mp4, webm, mkv, avi, mov, flv 格式，最大 500MB
+        支持 mp4, webm, mkv, avi, mov, flv 格式，最大 20GB
       </div>
     </div>
 
@@ -73,10 +73,10 @@
     if (hasError) { e.preventDefault(); return; }
 
     // Basic size check
-    var maxSize = 500 * 1024 * 1024;
+    var maxSize = 20 * 1024 * 1024 * 1024;
     if (fileInput.files[0].size > maxSize) {
       e.preventDefault();
-      showToast('文件大小不能超过 500MB', 'error');
+      showToast('文件大小不能超过 20GB', 'error');
       return;
     }
 

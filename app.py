@@ -21,7 +21,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 VIDEO_UPLOAD_FOLDER = 'static/videos'
 VIDEO_ALLOWED_EXTENSIONS = {'mp4', 'webm', 'mkv', 'avi', 'mov', 'flv'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024 * 1024  # 20GB
 
 # 数据库配置（使用 SQLite，文件名为 users.db）
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
