@@ -49,7 +49,7 @@
   {% if videos %}
   <div class="video-grid">
     {% for v in videos %}
-    <a href="{{ url_for('video_page', video_id=v.id) }}" class="video-card">
+    <a href="{{ url_for('video.video_page', video_id=v.id) }}" class="video-card">
       <div class="video-card-thumb">
         <i class="fas fa-play-circle"></i>
         {% if v.duration_hms %}
@@ -92,7 +92,7 @@
         {% endif %}
       </div>
       <div class="feed-body">
-        <a href="{{ url_for('user_space', username=f.actor.username) }}" class="feed-actor">{{ f.actor.username }}</a>
+        <a href="{{ url_for('main.user_space', username=f.actor.username) }}" class="feed-actor">{{ f.actor.username }}</a>
         {% if f.action == 'upload' %}
           投稿了视频
           {% if f.video %}<a href="{{ url_for('video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
