@@ -102,12 +102,39 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     avatar = db.Column(db.String(200), default='default-avatar.GIF')
+    bio = db.Column(db.String(200), default='')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def follow(self, user):
+        if not self.is_following(user):
+            self.followed.append(user)
+
+    def unfollow(self, user):
+        if self.is_following(user):
+            self.followed.remove(user)
+
+    def is_following(self, user):
+        return self.followed.filter(
+            followers.c.followed_id == user.id).count() > 0
+
+
+# 关注关系表（多对多，自引用）
+followers = db.Table('followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
+
+User.followed = db.relationship(
+    'User', secondary=followers,
+    primaryjoin=(followers.c.follower_id == User.id),
+    secondaryjoin=(followers.c.followed_id == User.id),
+    backref=db.backref('followers_ref', lazy='dynamic'), lazy='dynamic'
+)
 
 
 class Video(db.Model):
@@ -166,6 +193,54 @@ class Danmaku(db.Model):
 
     user = db.relationship('User', backref='danmakus', lazy=True)
     video = db.relationship('Video', backref='danmakus', lazy=True)
+
+
+class VideoLike(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_like'),)
+
+
+class VideoCoin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    count = db.Column(db.Integer, default=1)  # 1 或 2
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_coin'),)
+
+
+class VideoFavorite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_fav'),)
+
+
+class Feed(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # upload, like, coin, favorite
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    actor = db.relationship('User', foreign_keys=[actor_id])
+    video = db.relationship('Video')
+
+
+def push_feed(actor_id, action, video_id):
+    """向 actor 的所有粉丝推送动态（推模式）"""
+    actor = User.query.get(actor_id)
+    if not actor:
+        return
+    for follower in actor.followers_ref:
+        db.session.add(Feed(
+            user_id=follower.id, actor_id=actor_id,
+            action=action, video_id=video_id))
 
 
 # ========== 创建数据库表 ==========
@@ -290,6 +365,8 @@ def upload_video():
             db.session.add(video)
             db.session.commit()
             flash('视频上传成功！', 'success')
+            push_feed(session['user_id'], 'upload', video.id)
+            db.session.commit()
             return redirect(url_for('video_page', video_id=video.id))
         else:
             flash('不支持的视频格式（支持 mp4, webm, mkv, avi, mov, flv）', 'error')
@@ -543,6 +620,167 @@ def get_danmakus(video_id):
             'created_at': d.created_at.isoformat()
         } for d in danmakus]
     })
+
+
+# ========== 视频互动 API ==========
+@app.route('/api/video/<int:video_id>/interactions')
+def get_interactions(video_id):
+    """获取当前用户对视频的互动状态和计数"""
+    video = Video.query.get_or_404(video_id)
+    user_id = session.get('user_id')
+
+    total_coins = db.session.query(
+        db.func.coalesce(db.func.sum(VideoCoin.count), 0)
+    ).filter_by(video_id=video_id).scalar()
+
+    data = {
+        'like_count': VideoLike.query.filter_by(video_id=video_id).count(),
+        'coin_count': int(total_coins),
+        'favorite_count': VideoFavorite.query.filter_by(video_id=video_id).count(),
+    }
+
+    if user_id:
+        data['liked'] = VideoLike.query.filter_by(user_id=user_id, video_id=video_id).first() is not None
+        coin = VideoCoin.query.filter_by(user_id=user_id, video_id=video_id).first()
+        data['coined'] = coin is not None
+        data['my_coins'] = coin.count if coin else 0
+        data['favorited'] = VideoFavorite.query.filter_by(user_id=user_id, video_id=video_id).first() is not None
+
+    return jsonify(data)
+
+
+@app.route('/api/video/<int:video_id>/like', methods=['POST'])
+def toggle_like(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    Video.query.get_or_404(video_id)
+
+    existing = VideoLike.query.filter_by(user_id=user_id, video_id=video_id).first()
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        count = VideoLike.query.filter_by(video_id=video_id).count()
+        return jsonify({'liked': False, 'like_count': count})
+
+    db.session.add(VideoLike(user_id=user_id, video_id=video_id))
+    db.session.commit()
+    push_feed(user_id, 'like', video_id)
+    db.session.commit()
+    count = VideoLike.query.filter_by(video_id=video_id).count()
+    return jsonify({'liked': True, 'like_count': count})
+
+
+@app.route('/api/video/<int:video_id>/coin', methods=['POST'])
+def coin_video(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    Video.query.get_or_404(video_id)
+
+    data = request.get_json() or {}
+    count = data.get('count', 1)
+    if count not in (1, 2):
+        return jsonify({'error': '投币数只能是1或2'}), 400
+
+    existing = VideoCoin.query.filter_by(user_id=user_id, video_id=video_id).first()
+    if existing:
+        existing.count = count
+        db.session.commit()
+    else:
+        db.session.add(VideoCoin(user_id=user_id, video_id=video_id, count=count))
+        db.session.commit()
+        push_feed(user_id, 'coin', video_id)
+        db.session.commit()
+
+    total_coins = db.session.query(
+        db.func.coalesce(db.func.sum(VideoCoin.count), 0)
+    ).filter_by(video_id=video_id).scalar()
+    return jsonify({'coined': True, 'coin_count': count, 'total_coins': int(total_coins)})
+
+
+@app.route('/api/video/<int:video_id>/favorite', methods=['POST'])
+def toggle_favorite(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    Video.query.get_or_404(video_id)
+
+    existing = VideoFavorite.query.filter_by(user_id=user_id, video_id=video_id).first()
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        count = VideoFavorite.query.filter_by(video_id=video_id).count()
+        return jsonify({'favorited': False, 'favorite_count': count})
+
+    db.session.add(VideoFavorite(user_id=user_id, video_id=video_id))
+    db.session.commit()
+    push_feed(user_id, 'favorite', video_id)
+    db.session.commit()
+    count = VideoFavorite.query.filter_by(video_id=video_id).count()
+    return jsonify({'favorited': True, 'favorite_count': count})
+
+
+# ========== 关注与空间 ==========
+@app.route('/api/user/<int:target_id>/follow', methods=['POST'])
+def toggle_follow(target_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    if user_id == target_id:
+        return jsonify({'error': '不能关注自己'}), 400
+
+    user = User.query.get(user_id)
+    target = User.query.get_or_404(target_id)
+
+    if user.is_following(target):
+        user.unfollow(target)
+        db.session.commit()
+        return jsonify({'following': False, 'follower_count': target.followers_ref.count()})
+    else:
+        user.follow(target)
+        db.session.commit()
+        return jsonify({'following': True, 'follower_count': target.followers_ref.count()})
+
+
+@app.route('/user/<username>')
+def user_space(username):
+    space_user = User.query.filter_by(username=username).first_or_404()
+    current_id = session.get('user_id')
+
+    videos = Video.query.filter_by(user_id=space_user.id)\
+        .order_by(Video.created_at.desc()).all()
+
+    feed_items = Feed.query.filter_by(user_id=space_user.id)\
+        .order_by(Feed.created_at.desc()).limit(30).all()
+
+    is_following = False
+    if current_id:
+        viewer = User.query.get(current_id)
+        is_following = viewer.is_following(space_user)
+
+    return render_template('user_space.html',
+        space_user=space_user,
+        is_following=is_following,
+        videos=videos,
+        feed_items=feed_items)
+
+
+@app.route('/api/feed')
+def my_feed():
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    feeds = Feed.query.filter_by(user_id=session['user_id'])\
+        .order_by(Feed.created_at.desc()).limit(30).all()
+    return jsonify({'feed': [{
+        'id': f.id,
+        'actor': f.actor.username,
+        'actor_avatar': f.actor.avatar,
+        'action': f.action,
+        'video_id': f.video_id,
+        'video_title': f.video.title if f.video else None,
+        'created_at': f.created_at.isoformat()
+    } for f in feeds]})
 
 
 # ========== 视频管理 API ==========
