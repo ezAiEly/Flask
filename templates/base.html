@@ -11,12 +11,12 @@
 <body>
     <nav>
         <div class="nav-links">
-            <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> 首页</a>
+            <a href="{{ url_for('main.index') }}"><i class="fas fa-home"></i> 首页</a>
             {% if current_user %}
-            <a href="{{ url_for('upload_video') }}"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
+            <a href="{{ url_for('video.upload_video') }}"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
             {% endif %}
-            <a href="{{ url_for('about') }}"><i class="fas fa-info-circle"></i> 关于</a>
-            <a href="{{ url_for('contact') }}"><i class="fas fa-envelope"></i> 联系</a>
+            <a href="{{ url_for('main.about') }}"><i class="fas fa-info-circle"></i> 关于</a>
+            <a href="{{ url_for('main.contact') }}"><i class="fas fa-envelope"></i> 联系</a>
         </div>
         <div class="user-dropdown">
             <div class="avatar" onclick="toggleDropdown()">
@@ -36,13 +36,13 @@
             </div>
             <div id="dropdownMenu" class="dropdown-content">
                 {% if current_user %}
-                    <a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
-                    <a href="{{ url_for('user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
-                    <a href="{{ url_for('upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
-                    <a href="{{ url_for('logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
+                    <a href="{{ url_for('main.profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
+                    <a href="{{ url_for('main.user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
+                    <a href="{{ url_for('main.upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
+                    <a href="{{ url_for('auth.logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
                 {% else %}
-                    <a href="{{ url_for('login_page') }}"><i class="fas fa-sign-in-alt"></i> 登录</a>
-                    <a href="{{ url_for('register_page') }}"><i class="fas fa-user-plus"></i> 注册</a>
+                    <a href="{{ url_for('auth.login_page') }}"><i class="fas fa-sign-in-alt"></i> 登录</a>
+                    <a href="{{ url_for('auth.register_page') }}"><i class="fas fa-user-plus"></i> 注册</a>
                 {% endif %}
             </div>
         </div>
