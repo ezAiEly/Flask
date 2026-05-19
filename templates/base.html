@@ -141,6 +141,29 @@
     }, 3500);
   }
 
+  // ── 401 拦截（JWT 过期跳转登录） ────────────────────
+  (function() {
+    var _fetch = window.fetch;
+    window.fetch = function(url, opts) {
+      return _fetch(url, opts).then(function(res) {
+        if (res.status === 401) {
+          return res.json().then(function(data) {
+            var msg = (data && data.error) || '登录已过期，请重新登录';
+            showToast(msg, 'error');
+            localStorage.removeItem('access_token');
+            setTimeout(function() {
+              window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            }, 1200);
+            return Promise.reject(new Error('Unauthorized'));
+          }).catch(function() {
+            return Promise.reject(new Error('Unauthorized'));
+          });
+        }
+        return res;
+      });
+    };
+  })();
+
   // ── Sidebar toggle ────────────────────────────────
   (function() {
     var toggle = document.getElementById('sidebarToggle');

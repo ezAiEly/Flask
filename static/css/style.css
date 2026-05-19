@@ -1305,6 +1305,30 @@ footer.sidebar-collapsed {
   padding: 8px 12px;
 }
 
+/* ===== File Drop Zone ===== */
+.file-drop-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.dragover {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.file-drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .header-search {

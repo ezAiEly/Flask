@@ -4,7 +4,7 @@ import datetime
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify, current_app)
 from werkzeug.utils import secure_filename
-from models import db, User, Video, Feed, allowed_file
+from models import db, User, Video, Feed, allowed_file, validate_image_mime
 
 main_bp = Blueprint('main', __name__)
 
@@ -90,6 +90,11 @@ def upload_avatar():
             flash('没有选择文件', 'error')
             return redirect(request.url)
         if file and allowed_file(file.filename):
+            valid, mime = validate_image_mime(file)
+            if not valid:
+                flash('文件不是有效的图片，请上传真实图片文件', 'error')
+                return redirect(request.url)
+
             ext = file.filename.rsplit('.', 1)[1].lower()
             filename = f"user_{user.id}.{ext}"
             file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))

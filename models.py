@@ -31,15 +31,27 @@ def get_video_duration(filepath):
         return None
 
 
+def _get_or_create_system_user():
+    sys_user = User.query.filter_by(is_system=True).first()
+    if not sys_user:
+        sys_user = User(
+            username='system',
+            email='system@localhost',
+            is_system=True
+        )
+        sys_user.set_password(os.urandom(32).hex())
+        db.session.add(sys_user)
+        db.session.commit()
+        logging.info('scan_videos: 已创建系统用户 (id=%d)', sys_user.id)
+    return sys_user
+
+
 def scan_videos():
     from config import Config
     folder = Config.VIDEO_UPLOAD_FOLDER
     if not os.path.exists(folder):
         return
-    default_user = User.query.first()
-    if not default_user:
-        logging.info('scan_videos: 数据库中没有用户，跳过扫描')
-        return
+    sys_user = _get_or_create_system_user()
     registered = {v.filename for v in Video.query.all()}
     count = 0
     for fname in os.listdir(folder):
@@ -50,7 +62,7 @@ def scan_videos():
         filepath = os.path.join(folder, fname)
         duration = get_video_duration(filepath)
         title = os.path.splitext(fname)[0]
-        video = Video(title=title, filename=fname, duration=duration, user_id=default_user.id)
+        video = Video(title=title, filename=fname, duration=duration, user_id=sys_user.id)
         db.session.add(video)
         count += 1
         logging.info(f'scan_videos: 注册视频 {fname} (duration={duration})')
@@ -76,6 +88,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     avatar = db.Column(db.String(200), default='default-avatar.GIF')
     bio = db.Column(db.String(200), default='')
+    is_system = db.Column(db.Boolean, default=False)
 
     followed = db.relationship(
         'User', secondary=followers,
@@ -102,6 +115,13 @@ class User(db.Model):
         return self.followed.filter(followers.c.followed_id == user.id).count() > 0
 
 
+# 标签关联表（定义在 Video 之前）
+video_tags = db.Table('video_tags',
+    db.Column('video_id', db.Integer, db.ForeignKey('video.id'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
+)
+
+
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -110,10 +130,11 @@ class Video(db.Model):
     duration = db.Column(db.Float, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     views = db.Column(db.Integer, default=0)
-    tags = db.Column(db.String(500), default='')
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     user = db.relationship('User', backref='videos', lazy=True)
+    tags = db.relationship('Tag', secondary=video_tags, lazy='joined',
+                           backref=db.backref('videos', lazy='dynamic'))
 
     @property
     def src(self):
@@ -183,6 +204,11 @@ class VideoFavorite(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_fav'),)
 
 
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False, index=True)
+
+
 class VideoView(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -212,6 +238,52 @@ def push_feed(actor_id, action, video_id):
         db.session.add(Feed(
             user_id=follower.id, actor_id=actor_id,
             action=action, video_id=video_id))
+
+
+# ── 标签工具 ──────────────────────────────────────────────
+
+def get_or_create_tags(tag_names):
+    """根据名称列表获取或创建 Tag，返回 Tag 对象列表。"""
+    result = []
+    for name in tag_names:
+        name = name.strip()
+        if not name:
+            continue
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+            db.session.flush()
+        result.append(tag)
+    return result
+
+
+def set_video_tags(video, tag_names):
+    """用名称列表设置视频标签（替换旧标签）。"""
+    video.tags = get_or_create_tags(tag_names)
+
+
+# ── 图片校验 ──────────────────────────────────────────────
+
+def validate_image_mime(file_storage):
+    """使用 PIL 校验上传文件是否为真实图片。返回 (is_valid, mime_type)。"""
+    try:
+        from PIL import Image
+        img = Image.open(file_storage.stream)
+        img.verify()
+        file_storage.stream.seek(0)
+        fmt = img.format.lower() if img.format else ''
+        mime_map = {
+            'jpeg': 'image/jpeg', 'jpg': 'image/jpeg',
+            'png': 'image/png', 'gif': 'image/gif',
+            'bmp': 'image/bmp', 'webp': 'image/webp',
+        }
+        if fmt in mime_map:
+            return True, mime_map[fmt]
+        return True, f'image/{fmt}'
+    except Exception:
+        file_storage.stream.seek(0)
+        return False, None
 
 
 # ── 推荐引擎 ────────────────────────────────────────────
@@ -293,39 +365,34 @@ def get_hot_videos(page=1, per_page=12):
 
 
 def get_recommendations(user_id, limit=20):
-    from collections import Counter
-
-    # 1. 获取用户最近观看的视频 ID
-    watched_rows = (
-        db.session.query(VideoView.video_id)
-        .filter_by(user_id=user_id)
-        .order_by(VideoView.viewed_at.desc())
-        .limit(50)
+    # 1. 获取用户最近观看视频的标签词频（直接用 SQL 聚合）
+    top_tag_rows = (
+        db.session.query(
+            Tag.id, Tag.name, db.func.count(video_tags.c.video_id).label('cnt')
+        )
+        .select_from(VideoView)
+        .join(video_tags, video_tags.c.video_id == VideoView.video_id)
+        .join(Tag, Tag.id == video_tags.c.tag_id)
+        .filter(VideoView.user_id == user_id)
+        .group_by(Tag.id)
+        .order_by(db.text('cnt DESC'))
+        .limit(5)
         .all()
     )
-    watched_ids = [r[0] for r in watched_rows]
 
-    # 2. 如果没有观看历史，返回全站热门
-    if not watched_ids:
+    if not top_tag_rows:
         return _fallback_hot(limit)
 
-    # 3. 统计已观看视频的标签词频
-    watched_videos = Video.query.filter(Video.id.in_(watched_ids)).all()
-    tag_counter = Counter()
-    for v in watched_videos:
-        if v.tags:
-            for tag in v.tags.split(','):
-                tag = tag.strip()
-                if tag:
-                    tag_counter[tag] += 1
+    top_tag_ids = [r[0] for r in top_tag_rows]
 
-    if not tag_counter:
-        return _fallback_hot(limit)
+    # 2. 已观看视频 ID
+    watched_ids_sub = (
+        db.session.query(VideoView.video_id)
+        .filter(VideoView.user_id == user_id)
+        .subquery()
+    )
 
-    # 4. 取词频最高的几个标签
-    top_tags = [tag for tag, _ in tag_counter.most_common(5)]
-
-    # 5. 构建查询
+    # 3. 构建子查询
     like_sub, fav_sub, coin_sub = _popularity_subs()
     pop = _popularity_col(like_sub, fav_sub, coin_sub)
     danmaku_sub = (
@@ -337,24 +404,21 @@ def get_recommendations(user_id, limit=20):
         .subquery()
     )
 
-    tag_filters = [(Video.tags.ilike(f'%{t}%')) for t in top_tags]
-    from sqlalchemy import or_
-
-    query = _apply_popularity_joins(
+    # 4. 包含匹配标签且未观看的视频，按热度降序
+    return _apply_popularity_joins(
         db.session.query(
             Video,
             pop,
             db.func.coalesce(danmaku_sub.c.danmaku_count, 0).label('danmaku_count')
         ),
         like_sub, fav_sub, coin_sub
-    ).outerjoin(danmaku_sub, Video.id == danmaku_sub.c.video_id)
-
-    return (query
-        .filter(or_(*tag_filters))
-        .filter(~Video.id.in_(watched_ids))
-        .order_by(db.text('popularity DESC'))
-        .limit(limit)
-        .all())
+    ).outerjoin(danmaku_sub, Video.id == danmaku_sub.c.video_id) \
+     .join(video_tags, video_tags.c.video_id == Video.id) \
+     .filter(video_tags.c.tag_id.in_(top_tag_ids)) \
+     .filter(~Video.id.in_(watched_ids_sub)) \
+     .order_by(db.text('popularity DESC')) \
+     .limit(limit) \
+     .all()
 
 
 def _fallback_hot(limit):

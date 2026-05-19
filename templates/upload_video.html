@@ -2,36 +2,50 @@
 {% block title %}上传视频{% endblock %}
 
 {% block content %}
-<div class="form-container" style="max-width: 560px;">
+<div class="form-container" style="max-width: 640px;">
   <h1><i class="fas fa-cloud-upload-alt"></i> 上传视频</h1>
 
   <form id="uploadForm" method="POST" enctype="multipart/form-data" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
     <div class="form-group">
       <label for="title">视频标题 *</label>
-      <input type="text" id="title" name="title" placeholder="输入视频标题" required maxlength="200">
+      <input type="text" id="title" name="title" placeholder="给视频起个吸引人的标题" required maxlength="200">
       <span class="error-text">请输入视频标题</span>
     </div>
 
     <div class="form-group">
       <label for="description">视频简介</label>
-      <textarea id="description" name="description" placeholder="简单介绍一下视频内容（可选）" maxlength="2000" rows="3"></textarea>
+      <textarea id="description" name="description" placeholder="简单介绍视频内容（可选）" maxlength="2000" rows="3"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="tags_input">标签</label>
+      <input type="text" id="tags_input" name="tags" placeholder="多个标签用逗号分隔，如：游戏,实况,搞笑" maxlength="300">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">标签有助于推荐系统为你的视频找到合适的观众</div>
     </div>
 
     <div class="form-group">
       <label for="video_file">选择视频文件 *</label>
-      <input type="file" id="video_file" name="video_file" accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/x-flv" required>
+      <div class="file-drop-zone" id="dropZone">
+        <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:var(--text-muted);display:block;margin-bottom:8px;"></i>
+        <p style="color:var(--text-muted);margin-bottom:4px;">点击或拖拽视频文件到此处</p>
+        <p class="text-muted" style="font-size:0.75rem;">支持 mp4, webm, mkv, avi, mov, flv，最大 20 GB</p>
+        <input type="file" id="video_file" name="video_file" accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/x-flv" required>
+      </div>
       <span class="error-text">请选择视频文件</span>
-      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">
-        支持 mp4, webm, mkv, avi, mov, flv 格式，最大 20GB
+      <div id="fileInfo" class="hidden" style="margin-top:8px;padding:8px 12px;background:var(--bg-color);border-radius:var(--border-radius-sm);font-size:0.85rem;">
+        <span id="fileName"></span>
+        <span class="text-muted" id="fileSize" style="margin-left:8px;"></span>
       </div>
     </div>
 
-    <div class="form-group" id="progressGroup" style="display:none;">
+    <div class="form-group hidden" id="progressGroup">
       <label>上传进度</label>
-      <div style="background:var(--border-color);border-radius:4px;height:6px;overflow:hidden;">
-        <div id="progressBar" style="background:var(--primary-color);height:100%;width:0%;transition:width 0.3s;"></div>
+      <div style="background:var(--border-color);border-radius:4px;height:8px;overflow:hidden;">
+        <div id="progressBar" style="background:var(--primary-color);height:100%;width:0%;transition:width 0.15s;"></div>
       </div>
-      <span id="progressText" style="font-size:0.8rem;color:var(--text-muted);"></span>
+      <span id="progressText" style="font-size:0.8rem;color:var(--primary-color);font-weight:500;"></span>
     </div>
 
     <button type="submit" class="btn btn-primary" id="submitBtn">
@@ -45,6 +59,10 @@
 (function () {
   var form = document.getElementById('uploadForm');
   var fileInput = document.getElementById('video_file');
+  var dropZone = document.getElementById('dropZone');
+  var fileInfo = document.getElementById('fileInfo');
+  var fileName = document.getElementById('fileName');
+  var fileSize = document.getElementById('fileSize');
   var progressGroup = document.getElementById('progressGroup');
   var progressBar = document.getElementById('progressBar');
   var progressText = document.getElementById('progressText');
@@ -52,54 +70,111 @@
   var btnText = btn.querySelector('.btn-text');
   var spinner = document.getElementById('spinner');
 
+  // ── 拖拽上传 ──────────────────────────────────────
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(ev) {
+    dropZone.addEventListener(ev, function(e) { e.preventDefault(); e.stopPropagation(); });
+  });
+  ['dragenter', 'dragover'].forEach(function(ev) {
+    dropZone.addEventListener(ev, function() { dropZone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function(ev) {
+    dropZone.addEventListener(ev, function() { dropZone.classList.remove('dragover'); });
+  });
+  dropZone.addEventListener('drop', function(e) {
+    var files = e.dataTransfer.files;
+    if (files.length) { fileInput.files = files; showFileInfo(files[0]); }
+  });
+  fileInput.addEventListener('change', function() {
+    fileInput.parentElement.parentElement.classList.remove('error');
+    if (fileInput.files.length) { showFileInfo(fileInput.files[0]); }
+  });
+
+  function showFileInfo(f) {
+    fileName.textContent = f.name;
+    var mb = f.size / 1024 / 1024;
+    fileSize.textContent = mb > 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB';
+    fileInfo.classList.remove('hidden');
+  }
+
+  // ── XHR 上传（支持真实进度） ────────────────────────
   form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
     var title = document.getElementById('title').value.trim();
     var hasError = false;
-
     if (!title) {
       document.getElementById('title').parentElement.classList.add('error');
       hasError = true;
     } else {
       document.getElementById('title').parentElement.classList.remove('error');
     }
-
     if (!fileInput.files.length) {
-      fileInput.parentElement.classList.add('error');
+      fileInput.parentElement.parentElement.classList.add('error');
       hasError = true;
-    } else {
-      fileInput.parentElement.classList.remove('error');
     }
+    if (hasError) return;
 
-    if (hasError) { e.preventDefault(); return; }
-
-    // Basic size check
     var maxSize = 20 * 1024 * 1024 * 1024;
     if (fileInput.files[0].size > maxSize) {
-      e.preventDefault();
       showToast('文件大小不能超过 20GB', 'error');
       return;
     }
 
-    // Show progress UI
-    progressGroup.style.display = 'block';
+    progressGroup.classList.remove('hidden');
     btn.disabled = true;
     btnText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 上传中...';
     spinner.classList.remove('hidden');
 
-    // Simulate progress since HTML form submit doesn't give progress events
-    var width = 0;
-    var interval = setInterval(function () {
-      width += Math.random() * 15;
-      if (width > 90) { width = 90; clearInterval(interval); }
-      progressBar.style.width = width + '%';
-      progressText.textContent = Math.round(width) + '%';
-    }, 300);
+    var fd = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action || window.location.href, true);
+
+    xhr.upload.addEventListener('progress', function(ev) {
+      if (ev.lengthComputable) {
+        var pct = Math.round(ev.loaded / ev.total * 100);
+        progressBar.style.width = pct + '%';
+        progressText.textContent = pct + '% （' + formatBytes(ev.loaded) + ' / ' + formatBytes(ev.total) + '）';
+      }
+    });
+
+    xhr.addEventListener('load', function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        progressText.textContent = '上传完成，正在跳转...';
+        progressBar.style.background = 'var(--success-color)';
+        setTimeout(function() {
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(xhr.responseText, 'text/html');
+          var redirectUrl = doc.querySelector('meta[http-equiv="refresh"]');
+          window.location.href = xhr.responseURL || '/';
+        }, 500);
+      } else {
+        showToast('上传失败（' + xhr.status + '）', 'error');
+        resetButton();
+      }
+    });
+
+    xhr.addEventListener('error', function() {
+      showToast('网络错误，上传失败', 'error');
+      resetButton();
+    });
+
+    xhr.send(fd);
   });
 
-  fileInput.addEventListener('change', function () {
-    fileInput.parentElement.classList.remove('error');
-  });
-  document.getElementById('title').addEventListener('input', function () {
+  function resetButton() {
+    btn.disabled = false;
+    btnText.innerHTML = '<i class="fas fa-upload"></i> 上传';
+    spinner.classList.add('hidden');
+    progressBar.style.background = 'var(--primary-color)';
+  }
+
+  function formatBytes(b) {
+    if (b >= 1e9) return (b / 1e9).toFixed(1) + ' GB';
+    if (b >= 1e6) return (b / 1e6).toFixed(1) + ' MB';
+    return (b / 1e3).toFixed(1) + ' KB';
+  }
+
+  document.getElementById('title').addEventListener('input', function() {
     this.parentElement.classList.remove('error');
   });
 })();

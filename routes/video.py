@@ -4,8 +4,8 @@ import datetime
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify, current_app)
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView
-from models import allowed_video_file, push_feed, get_video_duration
+from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView, Tag
+from models import allowed_video_file, push_feed, get_video_duration, set_video_tags
 from models import get_recommendations, _fallback_hot, get_hot_videos
 
 video_bp = Blueprint('video', __name__)
@@ -66,6 +66,13 @@ def upload_video():
                 user_id=session['user_id']
             )
             db.session.add(video)
+            db.session.flush()
+
+            tags_raw = request.form.get('tags', '').strip()
+            if tags_raw:
+                tag_names = [t.strip() for t in tags_raw.split(',') if t.strip()]
+                set_video_tags(video, tag_names)
+
             db.session.commit()
             flash('视频上传成功！', 'success')
             push_feed(session['user_id'], 'upload', video.id)
@@ -226,7 +233,7 @@ def _serialize_video(v):
         'duration': v.duration,
         'duration_hms': v.duration_hms,
         'views': v.views,
-        'tags': [t.strip() for t in v.tags.split(',') if t.strip()] if v.tags else [],
+        'tags': [t.name for t in v.tags] if v.tags else [],
         'created_at': v.created_at.isoformat(),
         'author': {
             'id': v.user.id,

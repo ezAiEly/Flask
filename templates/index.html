@@ -3,7 +3,7 @@
 {% block content %}
 
 {% if current_user %}
-<div class="card mb-2" style="background: rgba(0,161,214,0.06); border-color: #91d5ff;">
+<div class="card mb-2" style="background:var(--primary-light); border-color:var(--primary-color); border-left:3px solid var(--primary-color);">
   <h2>欢迎回来，{{ current_user.username }}！</h2>
   <p class="text-muted">祝你今天愉快。</p>
 </div>

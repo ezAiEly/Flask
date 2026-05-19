@@ -7,6 +7,7 @@
 
 <div class="card">
     <form method="POST" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="name">姓名</label>
             <input type="text" id="name" name="name" placeholder="请输入姓名" required>
