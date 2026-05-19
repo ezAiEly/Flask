@@ -1,100 +1,176 @@
-<!--base.html-->
+<!-- base.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}我的应用{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}视频社区{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <nav>
-        <div class="nav-links">
-            <a href="{{ url_for('main.index') }}"><i class="fas fa-home"></i> 首页</a>
-            {% if current_user %}
-            <a href="{{ url_for('video.upload_video') }}"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
-            {% endif %}
-            <a href="{{ url_for('main.about') }}"><i class="fas fa-info-circle"></i> 关于</a>
-            <a href="{{ url_for('main.contact') }}"><i class="fas fa-envelope"></i> 联系</a>
-        </div>
-        <div class="user-dropdown">
-            <div class="avatar" onclick="toggleDropdown()">
-                {% if current_user %}
-                    {% if current_user.avatar %}
-                        {% if '/' in current_user.avatar %}
-                            <img src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
-                        {% endif %}
-                    {% else %}
-                        <div class="avatar-placeholder">{{ current_user.username[0] | upper }}</div>
-                    {% endif %}
-                {% else %}
-                    <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
-                {% endif %}
-            </div>
-            <div id="dropdownMenu" class="dropdown-content">
-                {% if current_user %}
-                    <a href="{{ url_for('main.profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
-                    <a href="{{ url_for('main.user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
-                    <a href="{{ url_for('main.upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
-                    <a href="{{ url_for('auth.logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
-                {% else %}
-                    <a href="{{ url_for('auth.login_page') }}"><i class="fas fa-sign-in-alt"></i> 登录</a>
-                    <a href="{{ url_for('auth.register_page') }}"><i class="fas fa-user-plus"></i> 注册</a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    <main>
-        {% if messages %}
-        <div class="flash-messages">
-            {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        </div>
+<!-- ==================== Header ==================== -->
+<header id="header">
+  <div class="header-left">
+    <button class="sidebar-toggle" id="sidebarToggle" title="折叠侧边栏">
+      <i class="fas fa-bars"></i>
+    </button>
+    <a href="{{ url_for('main.index') }}" class="header-logo">
+      <i class="fas fa-play-circle"></i>
+      <span class="logo-text">视频社区</span>
+    </a>
+  </div>
+
+  <form class="header-search" action="/" method="GET" onsubmit="return false;">
+    <input type="text" name="q" class="search-input" placeholder="搜索视频…" autocomplete="off">
+    <button type="submit" class="search-btn"><i class="fas fa-search"></i></button>
+  </form>
+
+  <div class="header-right">
+    {% if current_user %}
+    <a href="{{ url_for('video.upload_video') }}" class="header-upload-btn" title="投稿">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <span class="upload-text">投稿</span>
+    </a>
+    <div class="user-dropdown">
+      <div class="avatar" onclick="toggleDropdown()">
+        {% if current_user.avatar %}
+          {% if '/' in current_user.avatar %}
+            <img src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
+          {% else %}
+            <img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
+          {% endif %}
+        {% else %}
+          <div class="avatar-placeholder">{{ current_user.username[0] | upper }}</div>
         {% endif %}
-        {% block content %}{% endblock %}
-    </main>
-    {% endwith %}
+      </div>
+      <div id="dropdownMenu" class="dropdown-content">
+        <a href="{{ url_for('main.profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
+        <a href="{{ url_for('main.user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
+        <a href="{{ url_for('main.upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
+        <a href="{{ url_for('auth.logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
+      </div>
+    </div>
+    {% else %}
+    <a href="{{ url_for('auth.login_page') }}" class="header-link"><i class="fas fa-sign-in-alt"></i> 登录</a>
+    <a href="{{ url_for('auth.register_page') }}" class="header-link"><i class="fas fa-user-plus"></i> 注册</a>
+    {% endif %}
+  </div>
+</header>
 
-    <footer>
-        <p>&copy; {{ now.year }} 我的应用 &mdash; Built with Flask</p>
-    </footer>
+<!-- ==================== Sidebar ==================== -->
+<aside class="sidebar" id="sidebar">
+  <nav class="sidebar-nav">
+    <a href="{{ url_for('main.index') }}" class="sidebar-item {% if request.endpoint == 'main.index' %}active{% endif %}" title="首页">
+      <i class="fas fa-home"></i>
+      <span class="sidebar-label">首页</span>
+    </a>
+    <a href="{{ url_for('main.index') }}#hot" class="sidebar-item" title="热门" data-tab="hot">
+      <i class="fas fa-fire"></i>
+      <span class="sidebar-label">热门</span>
+    </a>
+    {% if current_user %}
+    <a href="{{ url_for('main.my_feed') }}" class="sidebar-item {% if request.endpoint == 'main.my_feed' %}active{% endif %}" title="动态">
+      <i class="fas fa-bell"></i>
+      <span class="sidebar-label">动态</span>
+    </a>
+    {% endif %}
+    <a href="{{ url_for('main.about') }}" class="sidebar-item {% if request.endpoint == 'main.about' %}active{% endif %}" title="关于">
+      <i class="fas fa-info-circle"></i>
+      <span class="sidebar-label">关于</span>
+    </a>
+    <a href="{{ url_for('main.contact') }}" class="sidebar-item {% if request.endpoint == 'main.contact' %}active{% endif %}" title="联系">
+      <i class="fas fa-envelope"></i>
+      <span class="sidebar-label">联系</span>
+    </a>
+  </nav>
+</aside>
 
-    <div class="toast-container" id="toastContainer"></div>
+<!-- ==================== Main ==================== -->
+<main id="mainContent">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-messages">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
 
-    <script>
-        function toggleDropdown() {
-            document.getElementById("dropdownMenu").classList.toggle("show");
-        }
+  {% block content %}{% endblock %}
+</main>
 
-        window.onclick = function(event) {
-            if (!event.target.matches('.avatar') && !event.target.closest('.avatar')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    dropdowns[i].classList.remove('show');
-                }
-            }
-        }
+<!-- ==================== Footer ==================== -->
+<footer id="mainFooter">
+  <p>&copy; {{ now.year }} 视频社区 &mdash; Built with Flask</p>
+</footer>
 
-        function showToast(message, type) {
-            type = type || 'info';
-            var container = document.getElementById('toastContainer');
-            var toast = document.createElement('div');
-            toast.className = 'toast toast-' + type;
-            var icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
-            toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i> ' + message;
-            container.appendChild(toast);
-            setTimeout(function() {
-                toast.classList.add('toast-removing');
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 3500);
-        }
-    </script>
-    {% block scripts %}{% endblock %}
+<!-- ==================== Toast ==================== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ==================== Scripts ==================== -->
+<script>
+  // ── Dropdown ──────────────────────────────────────
+  function toggleDropdown() {
+    document.getElementById("dropdownMenu").classList.toggle("show");
+  }
+
+  window.onclick = function(event) {
+    if (!event.target.matches('.avatar') && !event.target.closest('.avatar')) {
+      var dropdowns = document.getElementsByClassName("dropdown-content");
+      for (var i = 0; i < dropdowns.length; i++) {
+        dropdowns[i].classList.remove('show');
+      }
+    }
+  }
+
+  // ── Toast ─────────────────────────────────────────
+  function showToast(message, type) {
+    type = type || 'info';
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    var icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
+    toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i> ' + message;
+    container.appendChild(toast);
+    setTimeout(function() {
+      toast.classList.add('toast-removing');
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 3500);
+  }
+
+  // ── Sidebar toggle ────────────────────────────────
+  (function() {
+    var toggle = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    var main = document.getElementById('mainContent');
+    var footer = document.getElementById('mainFooter');
+    var collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+
+    function applyState() {
+      if (collapsed) {
+        sidebar.classList.add('collapsed');
+        main.classList.add('sidebar-collapsed');
+        footer.classList.add('sidebar-collapsed');
+      } else {
+        sidebar.classList.remove('collapsed');
+        main.classList.remove('sidebar-collapsed');
+        footer.classList.remove('sidebar-collapsed');
+      }
+    }
+
+    applyState();
+
+    toggle.addEventListener('click', function() {
+      collapsed = !collapsed;
+      localStorage.setItem('sidebar-collapsed', collapsed);
+      applyState();
+    });
+  })();
+</script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>
