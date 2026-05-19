@@ -38,7 +38,7 @@ function selectAvatar(filename) {
     .then(function(data) {
         if (data.success) {
             showToast('头像设置成功！', 'success');
-            setTimeout(function() { window.location.href = "{{ url_for('profile') }}"; }, 600);
+            setTimeout(function() { window.location.href = "{{ url_for('main.profile') }}"; }, 600);
         } else {
             showToast('设置失败：' + data.error, 'error');
         }

@@ -14,7 +14,7 @@
 </div>
 
 <div class="mt-2">
-    <a href="{{ url_for('upload_avatar') }}" class="btn btn-outline"><i class="fas fa-upload"></i> 上传自定义头像</a>
+    <a href="{{ url_for('main.upload_avatar') }}" class="btn btn-outline"><i class="fas fa-upload"></i> 上传自定义头像</a>
 </div>
 
 <script>
@@ -28,7 +28,7 @@ function selectAvatar(filename) {
     .then(function(data) {
         if (data.success) {
             showToast('头像设置成功！', 'success');
-            setTimeout(function() { window.location.href = "{{ url_for('profile') }}"; }, 600);
+            setTimeout(function() { window.location.href = "{{ url_for('main.profile') }}"; }, 600);
         } else {
             showToast('设置失败：' + data.error, 'error');
         }
