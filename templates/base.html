@@ -37,6 +37,7 @@
             <div id="dropdownMenu" class="dropdown-content">
                 {% if current_user %}
                     <a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
+                    <a href="{{ url_for('user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
                     <a href="{{ url_for('upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
                     <a href="{{ url_for('logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
                 {% else %}

@@ -19,7 +19,7 @@
 <div class="video-info">
   <h1>{{ video.title }}</h1>
   <div class="video-meta">
-    <span><i class="fas fa-user"></i> {{ video.user.username }}</span>
+    <span><i class="fas fa-user"></i> <a href="{{ url_for('user_space', username=video.user.username) }}">{{ video.user.username }}</a></span>
     <span><i class="fas fa-eye"></i> {{ video.views }} 次播放</span>
     <span><i class="fas fa-clock"></i> {{ video.created_at.strftime('%Y-%m-%d') }}</span>
   </div>
@@ -35,6 +35,9 @@
   </div>
   {% endif %}
 </div>
+
+<!-- 互动栏 -->
+<div class="interaction-bar-container" id="interactionBar"></div>
 
 <div class="danmaku-sender" id="danmakuSender">
   {% if current_user %}
@@ -72,6 +75,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <!-- Danmaku Engine -->
 <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
+<script src="{{ url_for('static', filename='js/interaction.js') }}"></script>
 
 <script>
 (function () {
@@ -84,6 +88,13 @@
       video: videoEl,
       videoId: {{ video.id }}
       {% if current_user %}, jwtToken: jwtToken{% endif %}
+    });
+
+    // 初始化互动栏
+    new InteractionBar({
+      container: document.getElementById('interactionBar'),
+      videoId: {{ video.id }},
+      loggedIn: {{ 'true' if current_user else 'false' }}
     });
 
     {% if current_user %}

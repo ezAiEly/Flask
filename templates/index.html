@@ -21,7 +21,7 @@
     <div class="video-card-body">
       <h3>{{ v.title }}</h3>
       <div class="meta">
-        <span><i class="fas fa-user"></i> {{ v.user.username }}</span>
+        <span><i class="fas fa-user"></i> <a href="{{ url_for('user_space', username=v.user.username) }}" onclick="event.stopPropagation();">{{ v.user.username }}</a></span>
         <span><i class="fas fa-eye"></i> {{ v.views }}</span>
         <span><i class="fas fa-clock"></i> {{ v.created_at.strftime('%m-%d') }}</span>
         {% if v.file_size_mb %}
