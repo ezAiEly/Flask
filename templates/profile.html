@@ -62,12 +62,18 @@
     <a href="{{ url_for('video_page', video_id=v.id) }}" style="text-decoration:none;color:inherit;">
       <div class="video-card-thumb">
         <i class="fas fa-play-circle"></i>
+        {% if v.duration_hms %}
+        <span class="video-card-duration">{{ v.duration_hms }}</span>
+        {% endif %}
       </div>
       <div class="video-card-body">
         <h3>{{ v.title }}</h3>
         <div class="meta">
           <span><i class="fas fa-eye"></i> {{ v.views }}</span>
           <span><i class="fas fa-clock"></i> {{ v.created_at.strftime('%m-%d') }}</span>
+          {% if v.file_size_mb %}
+          <span>{{ v.file_size_mb }} MB</span>
+          {% endif %}
         </div>
       </div>
     </a>

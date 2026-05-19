@@ -3,6 +3,7 @@ import os
 import uuid
 import logging
 import datetime
+import subprocess
 from flask import Flask, render_template, request, jsonify
 from flask import redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
@@ -46,6 +47,54 @@ def allowed_video_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in VIDEO_ALLOWED_EXTENSIONS
 
 
+def get_video_duration(filepath):
+    """用 ffprobe 获取视频时长（秒），失败返回 None"""
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'error', '-show_entries',
+            'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+            filepath
+        ], capture_output=True, text=True, timeout=15)
+        return float(result.stdout.strip()) if result.stdout.strip() else None
+    except Exception:
+        return None
+
+
+def scan_videos():
+    """扫描 static/videos/ 目录，将未注册的视频文件加入数据库"""
+    if not os.path.exists(VIDEO_UPLOAD_FOLDER):
+        return
+    # 取第一个用户作为默认上传者
+    default_user = User.query.first()
+    if not default_user:
+        logging.info('scan_videos: 数据库中没有用户，跳过扫描')
+        return
+
+    registered = {v.filename for v in Video.query.all()}
+    count = 0
+    for fname in os.listdir(VIDEO_UPLOAD_FOLDER):
+        if not allowed_video_file(fname):
+            continue
+        if fname in registered:
+            continue
+        filepath = os.path.join(VIDEO_UPLOAD_FOLDER, fname)
+        duration = get_video_duration(filepath)
+        # 文件名去掉扩展名作为标题
+        title = os.path.splitext(fname)[0]
+        video = Video(
+            title=title,
+            filename=fname,
+            duration=duration,
+            user_id=default_user.id
+        )
+        db.session.add(video)
+        count += 1
+        logging.info(f'scan_videos: 注册视频 {fname} (duration={duration})')
+    if count:
+        db.session.commit()
+        logging.info(f'scan_videos: 成功注册 {count} 个新视频')
+
+
 # ========== 数据库模型 ==========
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -66,6 +115,7 @@ class Video(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default='')
     filename = db.Column(db.String(300), nullable=False)
+    duration = db.Column(db.Float, nullable=True)  # 视频时长（秒）
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     views = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
@@ -88,6 +138,21 @@ class Video(db.Model):
             'flv': 'video/x-flv',
         }.get(ext, 'video/mp4')
 
+    @property
+    def duration_hms(self):
+        if not self.duration:
+            return None
+        m, s = divmod(int(self.duration), 60)
+        h, m = divmod(m, 60)
+        return f'{h}:{m:02d}:{s:02d}' if h else f'{m:02d}:{s:02d}'
+
+    @property
+    def file_size_mb(self):
+        path = os.path.join(VIDEO_UPLOAD_FOLDER, self.filename)
+        if os.path.exists(path):
+            return round(os.path.getsize(path) / (1024 * 1024), 1)
+        return None
+
 
 class Danmaku(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -106,6 +171,7 @@ class Danmaku(db.Model):
 # ========== 创建数据库表 ==========
 with app.app_context():
     db.create_all()
+    scan_videos()
 
 
 # ========== 上下文处理器 ==========
