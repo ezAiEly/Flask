@@ -29,6 +29,15 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+
+    # ── JSON 请求豁免 CSRF（必须在 csrf.init_app 之前注册） ─
+    @app.before_request
+    def _csrf_exempt_json():
+        if request.is_json:
+            view = app.view_functions.get(request.endpoint)
+            if view:
+                csrf.exempt(view)
+
     csrf.init_app(app)
     socketio.init_app(app)
 
