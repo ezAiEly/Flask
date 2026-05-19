@@ -21,5 +21,8 @@ __pycache__/
 # 环境变量文件（敏感信息）
 .env
 
+# Claude
+.claude/
+
 # 其他
 .DS_Store

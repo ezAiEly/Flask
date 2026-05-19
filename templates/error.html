@@ -1,0 +1,13 @@
+<!-- error.html -->
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="error-page">
+    <h1>{{ code }}</h1>
+    <h2>{{ title }}</h2>
+    <p>{{ message }}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary" style="width:auto; display:inline-flex;">
+        <i class="fas fa-home"></i> 返回首页
+    </a>
+</div>
+{% endblock %}

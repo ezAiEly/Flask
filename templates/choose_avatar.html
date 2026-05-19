@@ -1,0 +1,41 @@
+<!-- choose_avatar.html -->
+{% extends "base.html" %}
+{% block title %}选择头像{% endblock %}
+{% block content %}
+<h1>选择你的新头像</h1>
+<p class="text-muted mb-2">点击下方任意图片，即可设置为头像</p>
+
+<div class="avatar-grid">
+    {% for image in images %}
+    <div class="avatar-item" onclick="selectAvatar('{{ image }}')">
+        <img src="{{ url_for('static', filename='images/' + image) }}" alt="{{ image }}">
+    </div>
+    {% endfor %}
+</div>
+
+<div class="mt-2">
+    <a href="{{ url_for('upload_avatar') }}" class="btn btn-outline"><i class="fas fa-upload"></i> 上传自定义头像</a>
+</div>
+
+<script>
+function selectAvatar(filename) {
+    fetch('/set-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: 'images/' + filename })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('头像设置成功！', 'success');
+            setTimeout(function() { window.location.href = "{{ url_for('profile') }}"; }, 600);
+        } else {
+            showToast('设置失败：' + data.error, 'error');
+        }
+    })
+    .catch(function(error) {
+        showToast('请求出错：' + error, 'error');
+    });
+}
+</script>
+{% endblock %}

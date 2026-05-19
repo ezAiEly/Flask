@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ video.title }} - 视频播放{% endblock %}
+
+{% block content %}
+<div class="video-container">
+  <video
+    id="video-player"
+    class="video-js vjs-default-skin vjs-big-play-centered"
+    controls
+    preload="auto"
+    data-setup='{"fluid": true, "playbackRates": [0.5, 1, 1.25, 1.5, 2]}'
+  >
+    <source src="{{ url_for('static', filename=video.src) }}" type="{{ video.mime_type }}">
+    <p class="vjs-no-js">请启用 JavaScript 以观看视频</p>
+  </video>
+</div>
+
+<!-- 视频信息 -->
+<div class="video-info">
+  <h1>{{ video.title }}</h1>
+  <div class="video-meta">
+    <span><i class="fas fa-user"></i> {{ video.user.username }}</span>
+    <span><i class="fas fa-eye"></i> {{ video.views }} 次播放</span>
+    <span><i class="fas fa-clock"></i> {{ video.created_at.strftime('%Y-%m-%d') }}</span>
+  </div>
+  {% if video.description %}
+  <p class="video-desc">{{ video.description }}</p>
+  {% endif %}
+</div>
+
+<div class="danmaku-sender" id="danmakuSender">
+  {% if current_user %}
+  <input type="text" id="danmakuInput" class="danmaku-input"
+         placeholder="发个弹幕呗~" maxlength="200" autocomplete="off">
+  <div class="danmaku-colors" id="danmakuColors">
+    <span class="color-dot active" data-color="#FFFFFF" style="background:#FFF;" title="白色"></span>
+    <span class="color-dot" data-color="#FF4D4D" style="background:#FF4D4D;" title="红色"></span>
+    <span class="color-dot" data-color="#FFCC00" style="background:#FFCC00;" title="黄色"></span>
+    <span class="color-dot" data-color="#4DCC4D" style="background:#4DCC4D;" title="绿色"></span>
+    <span class="color-dot" data-color="#4DA6FF" style="background:#4DA6FF;" title="蓝色"></span>
+    <span class="color-dot" data-color="#FF80BF" style="background:#FF80BF;" title="粉色"></span>
+    <span class="color-dot" data-color="#00D4D4" style="background:#00D4D4;" title="青色"></span>
+    <span class="color-dot" data-color="#FFA64D" style="background:#FFA64D;" title="橙色"></span>
+  </div>
+  <select id="danmakuMode" class="danmaku-mode">
+    <option value="scroll">滚动</option>
+    <option value="top">顶部</option>
+    <option value="bottom">底部</option>
+  </select>
+  <button id="danmakuSend" class="danmaku-send-btn">发送</button>
+  {% else %}
+  <span class="danmaku-login-hint">
+    <a href="{{ url_for('login_page') }}">登录</a> 后即可发送弹幕
+  </span>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- video.js -->
+<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<!-- SocketIO -->
+<script src="/socket.io/socket.io.js"></script>
+<!-- Danmaku Engine -->
+<script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
+
+<script>
+(function () {
+  var videoEl = document.getElementById('video-player');
+  var jwtToken = localStorage.getItem('access_token') || '';
+
+  // 等待 video.js 初始化完成
+  function onReady() {
+    var engine = new DanmakuEngine({
+      video: videoEl,
+      videoId: {{ video.id }}
+      {% if current_user %}, jwtToken: jwtToken{% endif %}
+    });
+
+    {% if current_user %}
+    // ── 发送面板 ──
+    var input = document.getElementById('danmakuInput');
+    var sendBtn = document.getElementById('danmakuSend');
+    var modeSelect = document.getElementById('danmakuMode');
+    var colorDots = document.querySelectorAll('#danmakuColors .color-dot');
+
+    function doSend() {
+      var content = input.value;
+      if (!content.trim()) return;
+      engine.send(content);
+      input.value = '';
+      input.focus();
+    }
+
+    sendBtn.addEventListener('click', doSend);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doSend();
+    });
+
+    colorDots.forEach(function (dot) {
+      dot.addEventListener('click', function () {
+        colorDots.forEach(function (d) { d.classList.remove('active'); });
+        dot.classList.add('active');
+        engine.sendColor = dot.dataset.color;
+      });
+    });
+
+    modeSelect.addEventListener('change', function () {
+      engine.sendMode = modeSelect.value;
+    });
+    {% endif %}
+  }
+
+  // video.js 可能尚未完成 DOM 变换，轮询等待
+  if (videoEl.classList.contains('vjs-tech')) {
+    onReady();
+  } else {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var vjs = document.querySelector('.video-js');
+      if (vjs || tries > 50) {
+        clearInterval(timer);
+        onReady();
+      }
+    }, 100);
+  }
+})();
+</script>
+{% endblock %}
