@@ -4,6 +4,7 @@ import datetime
 from flask import Flask, render_template, session
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
+from flask_migrate import Migrate
 from config import config_map
 from models import db, User, scan_videos
 from routes import register_blueprints
@@ -13,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 
 jwt = JWTManager()
 socketio = SocketIO(cors_allowed_origins='*')
+migrate = Migrate()
 
 
 def create_app(config_name=None):
@@ -23,6 +25,7 @@ def create_app(config_name=None):
     app.config.from_object(config_map[config_name])
 
     db.init_app(app)
+    migrate.init_app(app, db)
     jwt.init_app(app)
     socketio.init_app(app)
 
