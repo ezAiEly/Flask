@@ -1856,6 +1856,9 @@ footer.sidebar-collapsed {
   justify-content: center;
   background: var(--card-bg);
 }
+.hero-slide-no-cover {
+  background: linear-gradient(135deg, var(--primary-color), #722ed1) !important;
+}
 .hero-slide-placeholder .hero-slide-content {
   text-align: center;
 }

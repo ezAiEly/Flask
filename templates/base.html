@@ -350,7 +350,8 @@
 {% if current_user %}
 <script>
   window.__MASCOT_CONFIG__ = {
-    mascotImage: {{ (current_user.mascot_image or '') | tojson }}
+    mascotImage: {{ (current_user.mascot_image or '') | tojson }},
+    preferences: {{ (current_user.preferences or {}) | tojson }}
   };
 </script>
 {% endif %}

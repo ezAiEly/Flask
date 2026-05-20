@@ -31,7 +31,11 @@
           var bg = v.cover_image
             ? 'url(/static/covers/' + escapeHtml(v.cover_image) + ')'
             : '';
-          slide.style.backgroundImage = bg;
+          if (bg) {
+            slide.style.backgroundImage = bg;
+          } else {
+            slide.classList.add('hero-slide-no-cover');
+          }
           slide.innerHTML =
             '<a href="/video/' + v.id + '" class="hero-slide-link">' +
               '<div class="hero-slide-overlay"></div>' +

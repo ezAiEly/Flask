@@ -403,10 +403,21 @@
     panel.classList.remove('show');
   }
 
-  // Load custom image from server (if logged in)
-  if (window.__MASCOT_CONFIG__ && window.__MASCOT_CONFIG__.mascotImage) {
+  // Sync server preferences with localStorage (server wins for non-position keys)
+  if (window.__MASCOT_CONFIG__) {
     loadSettings();
-    settings.imageUrl = window.__MASCOT_CONFIG__.mascotImage;
+    var cfg = window.__MASCOT_CONFIG__;
+    if (cfg.mascotImage) settings.imageUrl = cfg.mascotImage;
+    if (cfg.preferences && Object.keys(cfg.preferences).length > 0) {
+      var p = cfg.preferences;
+      if (typeof p.mascot_visible === 'boolean') settings.visible = p.mascot_visible;
+      if (typeof p.mascot_speech === 'boolean') settings.speechEnabled = p.mascot_speech;
+      if (typeof p.mascot_speech_freq === 'number') {
+        settings.speechFreqMin = p.mascot_speech_freq;
+        settings.speechFreqMax = p.mascot_speech_freq + 5;
+      }
+      if (typeof p.mascot_idle_anim === 'boolean') settings.idleAnim = p.mascot_idle_anim;
+    }
     saveSettings();
   }
 
