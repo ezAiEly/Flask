@@ -250,6 +250,8 @@ def settings():
         prefs['mascot_speech'] = request.form.get('mascot_speech') == 'on'
         prefs['mascot_speech_freq'] = int(request.form.get('mascot_speech_freq', 10))
         prefs['mascot_idle_anim'] = request.form.get('mascot_idle_anim') == 'on'
+        prefs['font_size'] = request.form.get('font_size', 'medium')
+        prefs['reduce_motion'] = request.form.get('reduce_motion') == 'on'
         user.preferences = prefs
         db.session.commit()
         flash('设置已保存', 'success')

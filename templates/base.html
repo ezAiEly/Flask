@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.css">
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -160,6 +161,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.js"></script>
 <script src="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/micromodal/0.4.10/micromodal.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/l10n/zh.js"></script>
 <script>
   // ── Dropdown ──────────────────────────────────────
   function toggleDropdown() {
@@ -282,7 +285,7 @@
     applyTheme(currentTheme);
 
     {% if current_user and current_user.preferences %}
-    // Apply saved accent color
+    // Apply saved preferences
     (function() {
       var prefs = {{ current_user.preferences | tojson }};
       if (prefs.accent_color) {
@@ -292,6 +295,16 @@
         var l = function(v) { return Math.min(255, v + Math.round((255 - v) * 0.15)); };
         document.documentElement.style.setProperty('--primary-hover', '#' +
           l(r).toString(16).padStart(2,'0') + l(g).toString(16).padStart(2,'0') + l(b).toString(16).padStart(2,'0'));
+      }
+      if (prefs.font_size) {
+        var sizes = { small: '0.85rem', medium: '0.95rem', large: '1.1rem' };
+        document.documentElement.style.fontSize = sizes[prefs.font_size] || sizes.medium;
+      }
+      if (prefs.reduce_motion) {
+        document.documentElement.classList.add('reduce-motion');
+      }
+      if (prefs.sidebar_default === 'collapsed' && localStorage.getItem('sidebar-collapsed') === null) {
+        localStorage.setItem('sidebar-collapsed', 'true');
       }
     })();
     {% endif %}

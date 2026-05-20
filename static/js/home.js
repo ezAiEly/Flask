@@ -13,6 +13,47 @@
   var hasMore = false;
   var loading = false;
 
+  // ── Hero Carousel ─────────────────────────────────────
+
+  var heroSwiper = null;
+
+  function initCarousel() {
+    fetch('/api/videos/hot?page=1&limit=8')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var videos = data.videos || [];
+        if (!videos.length) return;
+        var slides = document.getElementById('heroSlides');
+        slides.innerHTML = '';
+        videos.forEach(function (v) {
+          var slide = document.createElement('div');
+          slide.className = 'swiper-slide';
+          var bg = v.cover_image
+            ? 'url(/static/covers/' + escapeHtml(v.cover_image) + ')'
+            : '';
+          slide.style.backgroundImage = bg;
+          slide.innerHTML =
+            '<a href="/video/' + v.id + '" class="hero-slide-link">' +
+              '<div class="hero-slide-overlay"></div>' +
+              '<div class="hero-slide-info">' +
+                '<h3>' + escapeHtml(v.title) + '</h3>' +
+                '<p>' + escapeHtml(v.author ? v.author.username : '') + ' · ' + formatCount(v.views) + ' 次播放</p>' +
+              '</div>' +
+            '</a>';
+          slides.appendChild(slide);
+        });
+        heroSwiper = new Swiper('#heroCarousel', {
+          loop: true,
+          autoplay: { delay: 4000, disableOnInteraction: false },
+          pagination: { el: '.swiper-pagination', clickable: true },
+          navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
+        });
+      })
+      .catch(function () { /* carousel load failed, non-critical */ });
+  }
+
+  initCarousel();
+
   // ── Tab switching ────────────────────────────────────
 
   tabs.forEach(function (tab) {

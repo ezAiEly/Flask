@@ -39,21 +39,48 @@
       </div>
     </section>
 
-    <!-- 布局选项 -->
+    <!-- 布局与显示 -->
     <section class="settings-section">
-      <h2><i class="fas fa-columns"></i> 布局选项</h2>
-      <div class="settings-radio-group">
-        <label>
-          <input type="radio" name="sidebar_default" value="expanded"
-                 {{ 'checked' if not (user.preferences or {}).get('sidebar_default') or (user.preferences or {}).get('sidebar_default') == 'expanded' }}>
-          <span>侧边栏默认展开</span>
-        </label>
-        <label>
-          <input type="radio" name="sidebar_default" value="collapsed"
-                 {{ 'checked' if (user.preferences or {}).get('sidebar_default') == 'collapsed' }}>
-          <span>侧边栏默认折叠</span>
-        </label>
+      <h2><i class="fas fa-columns"></i> 布局与显示</h2>
+      <div class="settings-row">
+        <div class="settings-col">
+          <label class="settings-label">侧边栏</label>
+          <div class="settings-radio-group">
+            <label>
+              <input type="radio" name="sidebar_default" value="expanded"
+                     {{ 'checked' if not (user.preferences or {}).get('sidebar_default') or (user.preferences or {}).get('sidebar_default') == 'expanded' }}>
+              <span>展开</span>
+            </label>
+            <label>
+              <input type="radio" name="sidebar_default" value="collapsed"
+                     {{ 'checked' if (user.preferences or {}).get('sidebar_default') == 'collapsed' }}>
+              <span>折叠</span>
+            </label>
+          </div>
+        </div>
+        <div class="settings-col">
+          <label class="settings-label">字体大小</label>
+          <div class="settings-radio-group">
+            {% set fs = (user.preferences or {}).get('font_size', 'medium') %}
+            <label>
+              <input type="radio" name="font_size" value="small" {{ 'checked' if fs == 'small' }}>
+              <span>小</span>
+            </label>
+            <label>
+              <input type="radio" name="font_size" value="medium" {{ 'checked' if fs == 'medium' }}>
+              <span>中</span>
+            </label>
+            <label>
+              <input type="radio" name="font_size" value="large" {{ 'checked' if fs == 'large' }}>
+              <span>大</span>
+            </label>
+          </div>
+        </div>
       </div>
+      <label class="settings-checkbox" style="margin-top:0.5rem;">
+        <input type="checkbox" name="reduce_motion" {{ 'checked' if (user.preferences or {}).get('reduce_motion') }}>
+        <span>减少动画效果</span>
+      </label>
     </section>
 
     <!-- 看板娘设置 -->
