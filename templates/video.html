@@ -1,6 +1,27 @@
 {% extends "base.html" %}
 {% block title %}{{ video.title }} - 视频播放{% endblock %}
 
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "{{ video.title }}",
+  "description": "{{ video.description }}",
+  "uploadDate": "{{ video.created_at.isoformat() }}",
+  "duration": "{{ video.duration_hms or '' }}",
+  "interactionStatistic": [
+    { "@type": "InteractionCounter", "interactionType": "https://schema.org/WatchAction", "userInteractionCount": "{{ video.views }}" }
+  ],
+  "author": {
+    "@type": "Person",
+    "name": "{{ video.user.username }}",
+    "url": "{{ url_for('main.user_space', username=video.user.username, _external=True) }}"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="video-container">
   <video

@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block title %}{{ game.title }} - 游戏中心{% endblock %}
 
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "{{ game.title }}",
+  "description": "{{ game.description }}",
+  "genre": "{{ game.category }}",
+  "url": "{{ url_for('game.game_play', game_id=game.id, _external=True) }}",
+  "datePublished": "{{ game.created_at.isoformat() }}",
+  "interactionStatistic": {
+    "@type": "InteractionCounter",
+    "interactionType": "https://schema.org/PlayAction",
+    "userInteractionCount": "{{ game.play_count }}"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="game-play-wrap">
   <!-- 游戏信息头 -->
