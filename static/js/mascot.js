@@ -1,5 +1,6 @@
 /**
- * 看板娘 — 2D chibi mascot with mouse tracking, idle animation, speech bubbles
+ * 看板娘 — 2D chibi mascot with mouse tracking, drag, speech bubbles
+ * Customizable: settings panel, import custom image, persist position/preferences
  */
 (function () {
   'use strict';
@@ -17,9 +18,40 @@
     '要不要玩个小游戏？',
   ];
 
-  var el = null, bubble = null;
-  var pos = { x: 0, y: 0 };      // current position (center)
-  var target = { x: 0, y: 0 };   // target position (drag destination)
+  var SETTINGS_KEY = 'mascot_settings';
+  var defaultSettings = {
+    visible: true,
+    speechEnabled: true,
+    speechFreqMin: 8,
+    speechFreqMax: 20,
+    idleAnim: true,
+    x: window.innerWidth - 90,
+    y: window.innerHeight - 140,
+    imageUrl: ''
+  };
+  var settings = {};
+
+  function loadSettings() {
+    var saved = {};
+    try {
+      var raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch(e) {}
+    // Merge with defaults (handles new keys added in future)
+    settings = Object.assign({}, defaultSettings, saved);
+  }
+
+  function saveSettings() {
+    settings.x = pos.x;
+    settings.y = pos.y;
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch(e) {}
+  }
+
+  var el = null, bubble = null, panel = null;
+  var pos = { x: 0, y: 0 };
+  var target = { x: 0, y: 0 };
   var dragging = false;
   var dragOff = { x: 0, y: 0 };
   var mouse = { x: 0, y: 0 };
@@ -28,15 +60,18 @@
   var idleTime = 0;
 
   function init() {
-    pos.x = window.innerWidth - 90;
-    pos.y = window.innerHeight - 140;
+    loadSettings();
+
+    pos.x = settings.x;
+    pos.y = settings.y;
     target.x = pos.x;
     target.y = pos.y;
 
     buildDOM();
     bindEvents();
+    applySettings();
     loop();
-    scheduleBubble();
+    if (settings.speechEnabled) scheduleBubble();
   }
 
   function buildDOM() {
@@ -45,27 +80,20 @@
     el.className = 'mascot';
     el.style.cssText = 'left:' + pos.x + 'px;top:' + pos.y + 'px;';
     el.innerHTML =
-      // Body
       '<div class="mascot-body">' +
-        // Hair
         '<div class="mascot-hair"></div>' +
         '<div class="mascot-hair-back"></div>' +
-        // Face
         '<div class="mascot-face">' +
-          // Eyes
           '<div class="mascot-eye mascot-eye-left">' +
             '<div class="mascot-pupil"></div>' +
           '</div>' +
           '<div class="mascot-eye mascot-eye-right">' +
             '<div class="mascot-pupil"></div>' +
           '</div>' +
-          // Blush
           '<div class="mascot-blush mascot-blush-left"></div>' +
           '<div class="mascot-blush mascot-blush-right"></div>' +
-          // Mouth
           '<div class="mascot-mouth"></div>' +
         '</div>' +
-        // Arms
         '<div class="mascot-arm mascot-arm-left"></div>' +
         '<div class="mascot-arm mascot-arm-right"></div>' +
       '</div>';
@@ -76,42 +104,88 @@
     bubble.textContent = '你好呀~';
     el.appendChild(bubble);
 
-    // Tooltip for close hint
+    // Tooltip
     var tip = document.createElement('div');
     tip.className = 'mascot-tip';
     tip.textContent = '拖拽可移动 · 点击可切换表情';
     el.appendChild(tip);
 
+    // Gear button
+    var gear = document.createElement('button');
+    gear.className = 'mascot-gear';
+    gear.title = '看板娘设置';
+    gear.innerHTML = '<i class="fas fa-cog"></i>';
+    gear.addEventListener('click', function (e) {
+      e.stopPropagation();
+      togglePanel();
+    });
+    el.appendChild(gear);
+
+    // Control panel
+    panel = document.createElement('div');
+    panel.className = 'mascot-panel';
+    panel.innerHTML =
+      '<h4>看板娘设置</h4>' +
+      '<label><input type="checkbox" id="mascotVisible" checked> 显示看板娘</label>' +
+      '<label><input type="checkbox" id="mascotSpeech" checked> 气泡消息</label>' +
+      '<label>气泡间隔: <input type="range" id="mascotSpeechFreq" min="5" max="30" value="10"> <span id="mascotFreqLabel">10s</span></label>' +
+      '<label><input type="checkbox" id="mascotIdleAnim" checked> 待机动画</label>' +
+      '<hr>' +
+      '<label style="display:block;margin-bottom:4px;">自定义角色图片:</label>' +
+      '<input type="file" id="mascotImageInput" accept="image/png,image/gif,image/webp" style="margin-bottom:4px;">' +
+      '<button id="mascotResetImage" class="btn btn-outline btn-sm" style="margin-top:4px;width:100%;">恢复默认角色</button>' +
+      '<hr>' +
+      '<button id="mascotSaveSettings" class="btn btn-primary btn-sm" style="width:100%;">保存设置</button>';
+    el.appendChild(panel);
+
+    // Apply custom image if set
+    if (settings.imageUrl) applyCustomImage(settings.imageUrl);
+
     document.body.appendChild(el);
   }
 
+  function applyCustomImage(url) {
+    // Remove existing custom image if any
+    var existing = el.querySelector('.mascot-custom-img');
+    if (existing) existing.remove();
+    if (!url) return;
+    var img = document.createElement('img');
+    img.className = 'mascot-custom-img';
+    img.src = url;
+    img.alt = '自定义看板娘';
+    el.querySelector('.mascot-body').appendChild(img);
+  }
+
   function bindEvents() {
-    // Mouse tracking
     document.addEventListener('mousemove', function (e) {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
       idleTime = 0;
     });
 
-    // Drag
+    // Drag — mouse
     el.addEventListener('mousedown', function (e) {
       if (e.button !== 0) return;
+      if (e.target.closest('.mascot-gear') || e.target.closest('.mascot-panel')) return;
       dragging = true;
       var rect = el.getBoundingClientRect();
       dragOff.x = e.clientX - rect.left - rect.width / 2;
       dragOff.y = e.clientY - rect.top - rect.height / 2;
       el.classList.add('dragging');
       hideBubble();
+      hidePanel();
     });
 
-    // Touch drag
+    // Drag — touch
     el.addEventListener('touchstart', function (e) {
+      if (e.target.closest('.mascot-gear') || e.target.closest('.mascot-panel')) return;
       dragging = true;
       var rect = el.getBoundingClientRect();
       dragOff.x = e.touches[0].clientX - rect.left - rect.width / 2;
       dragOff.y = e.touches[0].clientY - rect.top - rect.height / 2;
       el.classList.add('dragging');
       hideBubble();
+      hidePanel();
     }, { passive: true });
 
     window.addEventListener('mousemove', function (e) {
@@ -131,14 +205,107 @@
     window.addEventListener('mouseup', endDrag);
     window.addEventListener('touchend', endDrag);
 
-    // Click for expression toggle
+    // Click to toggle expression (only when not interacting with controls)
     el.addEventListener('click', function (e) {
       if (dragging) return;
+      if (e.target.closest('.mascot-gear') || e.target.closest('.mascot-panel')) return;
       el.classList.toggle('happy');
       setTimeout(function () { el.classList.remove('happy'); }, 1200);
       var msg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
       showBubble(msg);
     });
+
+    // Panel events
+    panel.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+
+    var visibleCb = document.getElementById('mascotVisible');
+    var speechCb = document.getElementById('mascotSpeech');
+    var freqSlider = document.getElementById('mascotSpeechFreq');
+    var freqLabel = document.getElementById('mascotFreqLabel');
+    var idleCb = document.getElementById('mascotIdleAnim');
+    var imageInput = document.getElementById('mascotImageInput');
+    var resetBtn = document.getElementById('mascotResetImage');
+    var saveBtn = document.getElementById('mascotSaveSettings');
+
+    freqSlider.addEventListener('input', function () {
+      if (freqLabel) freqLabel.textContent = freqSlider.value + 's';
+    });
+
+    // Preview image
+    imageInput.addEventListener('change', function () {
+      var file = imageInput.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        applyCustomImage(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    saveBtn.addEventListener('click', function () {
+      settings.visible = visibleCb.checked;
+      settings.speechEnabled = speechCb.checked;
+      settings.speechFreqMin = parseInt(freqSlider.value);
+      settings.speechFreqMax = parseInt(freqSlider.value) + 5;
+      settings.idleAnim = idleCb.checked;
+      applySettings();
+
+      // Upload custom image if selected
+      var file = imageInput.files[0];
+      if (file) {
+        uploadMascotImage(file);
+      }
+      saveSettings();
+      hidePanel();
+    });
+
+    resetBtn.addEventListener('click', function () {
+      settings.imageUrl = '';
+      applyCustomImage('');
+      imageInput.value = '';
+      // Also clear backend
+      fetch('/api/mascot/reset', { method: 'POST' }).catch(function () {});
+      saveSettings();
+    });
+  }
+
+  function uploadMascotImage(file) {
+    var formData = new FormData();
+    formData.append('image', file);
+    fetch('/api/mascot/upload', { method: 'POST', body: formData })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.url) {
+          settings.imageUrl = data.url;
+          applyCustomImage(data.url);
+          saveSettings();
+        } else if (data.error) {
+          showToast(data.error, 'error');
+        }
+      })
+      .catch(function () {
+        // Keep the data URL as fallback if upload fails
+        showToast('角色图片上传失败，仅本地生效', 'error');
+      });
+  }
+
+  function applySettings() {
+    el.style.display = settings.visible ? '' : 'none';
+    document.getElementById('mascotVisible').checked = settings.visible;
+    document.getElementById('mascotSpeech').checked = settings.speechEnabled;
+    document.getElementById('mascotSpeechFreq').value = settings.speechFreqMin;
+    var freqLabel = document.getElementById('mascotFreqLabel');
+    if (freqLabel) freqLabel.textContent = settings.speechFreqMin + 's';
+    document.getElementById('mascotIdleAnim').checked = settings.idleAnim;
+
+    if (!settings.speechEnabled) {
+      clearTimeout(bubbleTimer);
+      hideBubble();
+    } else if (!bubbleTimer) {
+      scheduleBubble();
+    }
   }
 
   function endDrag() {
@@ -147,6 +314,7 @@
     el.classList.remove('dragging');
     pos.x = target.x;
     pos.y = target.y;
+    saveSettings();
   }
 
   function clampTarget() {
@@ -156,7 +324,6 @@
   }
 
   function loop() {
-    // Smooth follow
     if (!dragging) {
       pos.x += (target.x - pos.x) * 0.08;
       pos.y += (target.y - pos.y) * 0.08;
@@ -168,12 +335,11 @@
     el.style.left = pos.x + 'px';
     el.style.top = pos.y + 'px';
 
-    // Eye tracking
     updateEyes();
 
-    // Idle: gentle float when mouse is still
+    // Idle float (controllable)
     idleTime += 16;
-    if (idleTime > 3000) {
+    if (settings.idleAnim && idleTime > 3000) {
       var floatX = Math.sin(Date.now() / 2000) * 4;
       var floatY = Math.cos(Date.now() / 2400) * 3;
       target.x = pos.x + floatX;
@@ -203,6 +369,7 @@
   }
 
   function showBubble(msg) {
+    if (!settings.speechEnabled) return;
     bubble.textContent = msg;
     bubble.classList.add('show');
     clearTimeout(bubbleTimer);
@@ -214,14 +381,33 @@
   }
 
   function scheduleBubble() {
-    var delay = 8000 + Math.random() * 12000;
-    setTimeout(function () {
+    if (!settings.speechEnabled) {
+      bubbleTimer = null;
+      return;
+    }
+    var delay = settings.speechFreqMin * 1000 + Math.random() * (settings.speechFreqMax - settings.speechFreqMin) * 1000;
+    bubbleTimer = setTimeout(function () {
       if (!dragging && idleTime > 4000) {
         var msg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
         showBubble(msg);
       }
       scheduleBubble();
     }, delay);
+  }
+
+  function togglePanel() {
+    panel.classList.toggle('show');
+  }
+
+  function hidePanel() {
+    panel.classList.remove('show');
+  }
+
+  // Load custom image from server (if logged in)
+  if (window.__MASCOT_CONFIG__ && window.__MASCOT_CONFIG__.mascotImage) {
+    loadSettings();
+    settings.imageUrl = window.__MASCOT_CONFIG__.mascotImage;
+    saveSettings();
   }
 
   if (document.readyState === 'loading') {

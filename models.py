@@ -89,6 +89,8 @@ class User(db.Model):
     avatar = db.Column(db.String(200), default='images/default-avatar.GIF')
     bio = db.Column(db.String(200), default='')
     is_system = db.Column(db.Boolean, default=False)
+    preferences = db.Column(db.JSON, default=dict)
+    mascot_image = db.Column(db.String(300), default='')
 
     followed = db.relationship(
         'User', secondary=followers,

@@ -237,6 +237,61 @@ def clear_history():
     return jsonify({'success': True})
 
 
+@main_bp.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login_page', next=request.path))
+    user = db.session.get(User, session['user_id'])
+    if request.method == 'POST':
+        prefs = user.preferences or {}
+        prefs['accent_color'] = request.form.get('accent_color', '#00a1d6')
+        prefs['sidebar_default'] = request.form.get('sidebar_default', 'expanded')
+        prefs['mascot_visible'] = request.form.get('mascot_visible') == 'on'
+        prefs['mascot_speech'] = request.form.get('mascot_speech') == 'on'
+        prefs['mascot_speech_freq'] = int(request.form.get('mascot_speech_freq', 10))
+        prefs['mascot_idle_anim'] = request.form.get('mascot_idle_anim') == 'on'
+        user.preferences = prefs
+        db.session.commit()
+        flash('设置已保存', 'success')
+        return redirect(url_for('main.settings'))
+    return render_template('settings.html', user=user)
+
+
+@main_bp.route('/api/mascot/upload', methods=['POST'])
+def upload_mascot():
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    if 'image' not in request.files:
+        return jsonify({'error': '没有选择文件'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    valid, mime = validate_image_mime(file)
+    if not valid:
+        return jsonify({'error': '文件不是有效图片'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        return jsonify({'error': '不支持的图片格式'}), 400
+    filename = f"mascot_{session['user_id']}.{ext}"
+    mascot_dir = os.path.join(current_app.static_folder, 'mascots')
+    os.makedirs(mascot_dir, exist_ok=True)
+    file.save(os.path.join(mascot_dir, filename))
+    user = db.session.get(User, session['user_id'])
+    user.mascot_image = f'mascots/{filename}'
+    db.session.commit()
+    return jsonify({'success': True, 'url': f'/static/mascots/{filename}'})
+
+
+@main_bp.route('/api/mascot/reset', methods=['POST'])
+def reset_mascot():
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user = db.session.get(User, session['user_id'])
+    user.mascot_image = ''
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 @main_bp.route('/routes')
 def list_routes():
     import urllib.parse

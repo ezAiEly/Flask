@@ -56,11 +56,18 @@
 {% endif %}
 
 <script>
-document.getElementById('clearHistoryBtn').addEventListener('click', function() {
-  if (!confirm('确定清空所有观看记录？此操作不可撤销。')) return;
-  fetch('/api/history/clear', { method: 'POST' }).then(function(r) { return r.json(); }).then(function() {
-    window.location.reload();
+(function() {
+  var clearBtn = document.getElementById('clearHistoryBtn');
+  if (!clearBtn) return;
+  clearBtn.addEventListener('click', function() {
+    document.getElementById('confirmModalContent').innerHTML = '<p>确定清空所有观看记录？此操作不可撤销。</p>';
+    document.getElementById('confirmModalOk').onclick = function() {
+      fetch('/api/history/clear', { method: 'POST' }).then(function(r) { return r.json(); }).then(function() {
+        window.location.reload();
+      });
+    };
+    MicroModal.show('confirmModal');
   });
-});
+})();
 </script>
 {% endblock %}

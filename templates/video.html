@@ -49,10 +49,9 @@
   {% endif %}
   {% if current_user and current_user.id == video.user_id %}
   <div class="video-owner-actions">
-    <form method="POST" action="{{ url_for('video.delete_video', video_id=video.id) }}"
-          onsubmit="return confirm('确定删除视频「{{ video.title }}」？此操作不可撤销。');">
+    <button type="button" class="btn btn-sm btn-danger" id="deleteVideoBtn"><i class="fas fa-trash"></i> 删除视频</button>
+    <form method="POST" action="{{ url_for('video.delete_video', video_id=video.id) }}" id="deleteVideoForm" style="display:none;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> 删除视频</button>
     </form>
   </div>
   {% endif %}
@@ -125,6 +124,19 @@
 <script src="{{ url_for('static', filename='js/interaction.js') }}"></script>
 
 <script>
+// ── Delete video button ──
+(function() {
+  var deleteBtn = document.getElementById('deleteVideoBtn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', function() {
+      document.getElementById('confirmModalContent').innerHTML = '<p>确定删除视频「{{ video.title }}」？此操作不可撤销。</p>';
+      document.getElementById('confirmModalOk').onclick = function() {
+        document.getElementById('deleteVideoForm').submit();
+      };
+      MicroModal.show('confirmModal');
+    });
+  }
+})();
 (function () {
   var videoEl = document.getElementById('video-player');
   var jwtToken = localStorage.getItem('access_token') || '';
