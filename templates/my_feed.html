@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}动态{% endblock %}
+
+{% block content %}
+<h1><i class="fas fa-bell"></i> 我的动态</h1>
+<p class="text-muted mb-2">关注的人有新动作时，会在这里显示。</p>
+
+{% if feeds %}
+<div class="feed-list">
+  {% for f in feeds %}
+  <div class="feed-item">
+    <div class="feed-avatar">
+      {% if f.actor.avatar %}
+        {% if '/' in f.actor.avatar %}
+          <img src="{{ url_for('static', filename=f.actor.avatar) }}" alt="">
+        {% else %}
+          <img src="{{ url_for('static', filename='avatars/' + f.actor.avatar) }}" alt="">
+        {% endif %}
+      {% else %}
+        <div class="avatar-placeholder" style="width:36px;height:36px;font-size:14px;">
+          {{ f.actor.username[0] | upper }}
+        </div>
+      {% endif %}
+    </div>
+    <div class="feed-body">
+      <a href="{{ url_for('main.user_space', username=f.actor.username) }}" class="feed-actor">{{ f.actor.username }}</a>
+      {% if f.action == 'upload' %}
+        投稿了视频
+        {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+      {% elif f.action == 'like' %}
+        点赞了视频
+        {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+      {% elif f.action == 'coin' %}
+        投币了视频
+        {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+      {% elif f.action == 'favorite' %}
+        收藏了视频
+        {% if f.video %}<a href="{{ url_for('video.video_page', video_id=f.video.id) }}">《{{ f.video.title }}》</a>{% endif %}
+      {% else %}
+        发布了动态
+      {% endif %}
+      <span class="feed-time">{{ f.created_at.strftime('%m-%d %H:%M') }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if has_more %}
+<div class="text-center mt-2">
+  <a href="{{ url_for('main.my_feed', page=page+1) }}" class="btn btn-outline btn-sm">加载更多</a>
+</div>
+{% endif %}
+{% else %}
+<div class="empty-state mt-4">
+  <i class="fas fa-bell empty-state-icon"></i>
+  <h2>暂无动态</h2>
+  <p class="text-muted">关注一些创作者，最新动态会在这里显示。</p>
+</div>
+{% endif %}
+{% endblock %}

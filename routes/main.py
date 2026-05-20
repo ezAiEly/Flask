@@ -163,8 +163,26 @@ def user_space(username):
         feed_items=feed_items)
 
 
-@main_bp.route('/api/feed')
+@main_bp.route('/feed')
 def my_feed():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login_page', next=request.path))
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    base = Feed.query.filter_by(user_id=session['user_id'])\
+        .order_by(Feed.created_at.desc())
+    total = base.count()
+    feeds = base.offset(offset).limit(per_page + 1).all()
+    has_more = len(feeds) > per_page
+    feeds = feeds[:per_page]
+
+    return render_template('my_feed.html', feeds=feeds, page=page, has_more=has_more, total=total)
+
+
+@main_bp.route('/api/feed')
+def api_feed():
     if 'user_id' not in session:
         return jsonify({'error': '请先登录'}), 401
     feeds = Feed.query.filter_by(user_id=session['user_id'])\

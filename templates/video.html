@@ -203,15 +203,36 @@
     }
 
     function renderComments(comments) {
-      comments.forEach(function(c) { list.appendChild(buildCommentItem(c)); });
+      comments.forEach(function(c) {
+        var commentEl = buildCommentItem(c);
+        list.appendChild(commentEl);
+        if (c.replies && c.replies.length) {
+          var repliesEl = document.getElementById('replies' + c.id);
+          if (repliesEl) {
+            c.replies.forEach(function(r) {
+              var replyEl = buildCommentItem(r);
+              replyEl.classList.add('comment-reply-item');
+              repliesEl.appendChild(replyEl);
+            });
+          }
+        }
+      });
     }
 
     function buildCommentItem(c) {
       var div = document.createElement('div');
       div.className = 'comment-item';
+      var avatarSrc;
+      if (!c.user.avatar) {
+        avatarSrc = '/static/images/default-avatar.GIF';
+      } else if (c.user.avatar.indexOf('/') > -1) {
+        avatarSrc = '/static/' + c.user.avatar;
+      } else {
+        avatarSrc = '/static/avatars/' + c.user.avatar;
+      }
       div.innerHTML =
         '<div class="comment-avatar">' +
-          '<img src="' + (c.user.avatar && c.user.avatar.indexOf('/') > -1 ? '/static/' + c.user.avatar : '/static/avatars/' + (c.user.avatar || 'images/default-avatar.GIF')) + '" alt="' + escapeHtml(c.user.username) + '">' +
+          '<img src="' + avatarSrc + '" alt="' + escapeHtml(c.user.username) + '">' +
         '</div>' +
         '<div class="comment-body">' +
           '<div class="comment-author">' + escapeHtml(c.user.username) + '</div>' +
