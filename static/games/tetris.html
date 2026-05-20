@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>俄罗斯方块</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{display:flex;justify-content:center;align-items:center;min-height:100vh;background:#0a0a0a;font-family:Arial,sans-serif;overflow:hidden}
+.game-box{display:flex;gap:16px;align-items:flex-start;color:#fff}
+.side{text-align:center;min-width:100px}
+.side h1{font-size:1.4rem;color:#00d4ff;margin-bottom:8px}
+.side .label{font-size:0.75rem;color:#888;margin-bottom:2px}
+.side .val{font-size:1.3rem;font-weight:bold;margin-bottom:12px}
+.side .next-canvas{border:1px solid #333;display:block;margin:0 auto 12px}
+.btn{background:#00d4ff;color:#000;border:none;padding:8px 20px;border-radius:4px;font-size:0.85rem;cursor:pointer;font-weight:bold}
+.btn:hover{opacity:0.85}
+canvas#board{border:2px solid #333;display:block}
+.controls{display:none;margin-top:12px;text-align:center}
+.ctrl-row{display:flex;justify-content:center;gap:4px;margin-bottom:4px}
+.ctrl-btn{width:48px;height:48px;background:#333;color:#fff;border:none;border-radius:6px;font-size:1.2rem;cursor:pointer}
+.ctrl-btn:active{background:#00d4ff;color:#000}
+@media(max-width:500px){.controls{display:block}.game-box{flex-direction:column;align-items:center}.side{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center}.side h1{width:100%}}
+</style>
+</head>
+<body>
+<div class="game-box">
+  <div class="side">
+    <h1>TETRIS</h1>
+    <div class="label">分数</div><div class="val" id="score">0</div>
+    <div class="label">行数</div><div class="val" id="lines">0</div>
+    <div class="label">下一个</div>
+    <canvas class="next-canvas" id="nextCanvas" width="100" height="80"></canvas>
+    <button class="btn" onclick="restart()">重新开始</button>
+  </div>
+  <canvas id="board"></canvas>
+</div>
+<div class="controls">
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="rotate()">↻</button><button class="ctrl-btn" onclick="move('up')">▲</button><button class="ctrl-btn" onclick="hardDrop()">▼▼</button></div>
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="move('left')">◄</button><button class="ctrl-btn" onclick="move('down')">▼</button><button class="ctrl-btn" onclick="move('right')">►</button></div>
+</div>
+<script>
+(function(){
+var COLS=10,ROWS=20,cell=Math.min((window.innerHeight-200)/ROWS,30);
+var board,score,lines,current,next,gameOver,interval,loopMs=400;
+var canvas=document.getElementById('board'),ctx=canvas.getContext('2d');
+var nextCanvas=document.getElementById('nextCanvas'),nextCtx=nextCanvas.getContext('2d');
+canvas.width=COLS*cell;canvas.height=ROWS*cell;
+
+var pieces=[
+  {shape:[[1,1,1,1]],color:'#00d4ff'}, // I
+  {shape:[[1,1],[1,1]],color:'#f0e442'}, // O
+  {shape:[[1,1,1],[0,1,0]],color:'#9b59b6'}, // T
+  {shape:[[1,1,0],[0,1,1]],color:'#2ecc71'}, // S
+  {shape:[[0,1,1],[1,1,0]],color:'#e74c3c'}, // Z
+  {shape:[[1,0,0],[1,1,1]],color:'#e67e22'}, // J
+  {shape:[[0,0,1],[1,1,1]],color:'#3498db'}, // L
+];
+
+function randPiece(){return JSON.parse(JSON.stringify(pieces[Math.floor(Math.random()*pieces.length)]));}
+function spawn(){current=next||randPiece();next=randPiece();current.x=Math.floor((COLS-current.shape[0].length)/2);current.y=0;if(collides()){gameOver=true;clearInterval(interval);}}
+function collides(offX,offY,s){
+  s=s||current.shape;
+  var cx=(current.x+(offX||0)),cy=(current.y+(offY||0));
+  for(var r=0;r<s.length;r++)for(var c=0;c<s[r].length;c++){
+    if(!s[r][c])continue;
+    var nx=cx+c,ny=cy+r;
+    if(nx<0||nx>=COLS||ny>=ROWS)return true;
+    if(ny>=0&&board[ny][nx])return true;
+  }
+  return false;
+}
+function lock(){
+  for(var r=0;r<current.shape.length;r++)for(var c=0;c<current.shape[r].length;c++){
+    if(!current.shape[r][c])continue;
+    var ny=current.y+r,nx=current.x+c;
+    if(ny<0)continue;
+    board[ny][nx]=current.color;
+  }
+  clearLines();spawn();draw();
+}
+function clearLines(){
+  var cleared=0;
+  for(var r=ROWS-1;r>=0;r--){
+    if(board[r].every(function(c){return c!==null})){
+      board.splice(r,1);board.unshift(new Array(COLS).fill(null));cleared++;r++;
+    }
+  }
+  if(cleared){lines+=cleared;score+=[0,100,300,500,800][cleared];document.getElementById('lines').textContent=lines;document.getElementById('score').textContent=score;}
+}
+function tick(){
+  if(gameOver)return;
+  if(!collides(0,1)){current.y++;}
+  else{lock();}
+  draw();
+}
+window.move=function(d){
+  if(gameOver)return;
+  var dx=d==='left'?-1:d==='right'?1:0,dy=d==='down'?1:0;
+  if(d==='up'){rotate();return;}
+  if(!collides(dx,dy)){current.x+=dx;current.y+=dy;draw();}
+};
+window.rotate=function(){
+  var s=current.shape,rotated=s[0].map(function(_,i){return s.map(function(r){return r[i]}).reverse();});
+  if(!collides(0,0,rotated))current.shape=rotated;
+  draw();
+};
+window.hardDrop=function(){
+  if(gameOver)return;
+  while(!collides(0,1))current.y++;
+  lock();draw();
+};
+function draw(){
+  ctx.fillStyle='#111';ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    if(board[r][c]){ctx.fillStyle=board[r][c];ctx.fillRect(c*cell+1,r*cell+1,cell-2,cell-2);}
+    ctx.strokeStyle='#1a1a1a';ctx.strokeRect(c*cell,r*cell,cell,cell);
+  }
+  if(current&&!gameOver){
+    ctx.fillStyle=current.color;
+    for(var r2=0;r2<current.shape.length;r2++)for(var c2=0;c2<current.shape[r2].length;c2++){
+      if(!current.shape[r2][c2])continue;
+      var nx=current.x+c2,ny=current.y+r2;
+      if(ny>=0)ctx.fillRect(nx*cell+1,ny*cell+1,cell-2,cell-2);
+    }
+  }
+  if(gameOver){
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#e74c3c';ctx.font='bold 24px Arial';ctx.textAlign='center';
+    ctx.fillText('游戏结束',canvas.width/2,canvas.height/2);
+  }
+  // Next piece
+  nextCtx.fillStyle='#111';nextCtx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
+  if(next){
+    nextCtx.fillStyle=next.color;
+    var ox=(nextCanvas.width-next.shape[0].length*20)/2,oy=(nextCanvas.height-next.shape.length*20)/2;
+    for(var r3=0;r3<next.shape.length;r3++)for(var c3=0;c3<next.shape[r3].length;c3++){
+      if(next.shape[r3][c3])nextCtx.fillRect(ox+c3*20+1,oy+r3*20+1,18,18);
+    }
+  }
+}
+function init(){
+  board=Array.from({length:ROWS},function(){return new Array(COLS).fill(null)});
+  score=0;lines=0;gameOver=false;current=null;next=null;
+  document.getElementById('score').textContent='0';document.getElementById('lines').textContent='0';
+  spawn();if(interval)clearInterval(interval);interval=setInterval(tick,loopMs);draw();
+}
+document.addEventListener('keydown',function(e){
+  if(e.keyCode===37)move('left');
+  else if(e.keyCode===39)move('right');
+  else if(e.keyCode===40)move('down');
+  else if(e.keyCode===38)rotate();
+  else if(e.keyCode===32){e.preventDefault();hardDrop();}
+});
+window.restart=init;
+init();
+})();
+</script>
+</body>
+</html>

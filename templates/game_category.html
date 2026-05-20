@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ category_name }} 游戏 - 游戏中心{% endblock %}
+
+{% block content %}
+<div class="category-header" style="border-left-color:{{ category_color }};">
+  <i class="fas {{ category_icon }} category-header-icon" style="color:{{ category_color }};"></i>
+  <div>
+    <h1>{{ category_name }} 游戏</h1>
+    <p class="text-muted">共 {{ total }} 款游戏</p>
+  </div>
+</div>
+
+{% if games %}
+<div class="game-grid">
+  {% for g in games %}
+  <a href="{{ url_for('game.game_play', game_id=g.id) }}" class="game-card">
+    <div class="game-card-cover">
+      {% if g.cover_image %}
+      <img src="{{ url_for('static', filename='covers/' + g.cover_image) }}" alt="" loading="lazy">
+      {% else %}
+      <div class="game-card-placeholder" style="background:{{ category_color }};">
+        <i class="fas {{ category_icon }}"></i>
+      </div>
+      {% endif %}
+      <span class="game-card-cat" style="background:{{ category_color }};">{{ g.category }}</span>
+    </div>
+    <div class="game-card-body">
+      <h3>{{ g.title }}</h3>
+      <p class="game-card-desc">{{ g.description[:60] }}{% if g.description|length > 60 %}…{% endif %}</p>
+      <div class="game-card-meta">
+        <span><i class="fas fa-play"></i> {{ g.play_count }} 次游玩</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if has_more %}
+<div class="text-center mt-3">
+  <a href="{{ url_for('game.game_category', category_name=category_name, page=page+1) }}" class="btn btn-outline btn-lg" style="min-width:200px;">
+    <i class="fas fa-chevron-down"></i> 加载更多
+  </a>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state mt-4">
+  <i class="fas fa-gamepad empty-state-icon"></i>
+  <h2>暂无游戏</h2>
+  <p class="text-muted">该分类下还没有游戏，敬请期待！</p>
+  <a href="{{ url_for('game.game_index') }}" class="btn btn-primary mt-2">浏览全部游戏</a>
+</div>
+{% endif %}
+{% endblock %}

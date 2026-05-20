@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ game.title }} - 游戏中心{% endblock %}
+
+{% block content %}
+<div class="game-play-wrap">
+  <!-- 游戏信息头 -->
+  <div class="game-play-header">
+    <a href="{{ url_for('game.game_index') }}" class="game-play-back">
+      <i class="fas fa-arrow-left"></i> 返回游戏中心
+    </a>
+    <div class="game-play-info">
+      <h1>{{ game.title }}</h1>
+      <div class="game-play-meta">
+        <span class="game-play-cat" style="background:{{ category_colors.get(game.category, '#6366f1') }};">
+          <i class="fas {{ category_icons.get(game.category, 'fa-gamepad') }}"></i> {{ game.category }}
+        </span>
+        <span><i class="fas fa-play"></i> {{ game.play_count }} 次游玩</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏 iframe -->
+  <div class="game-frame-container">
+    {% if game.embed_url %}
+    <iframe
+      src="{{ game.embed_url }}"
+      class="game-iframe"
+      allowfullscreen
+      allow="autoplay; fullscreen; cross-origin-isolated"
+      loading="lazy"
+      title="{{ game.title }}"
+    ></iframe>
+    {% else %}
+    <div class="game-frame-placeholder">
+      <i class="fas fa-gamepad" style="font-size:4rem;color:var(--text-muted);display:block;margin-bottom:16px;"></i>
+      <p class="text-muted">该游戏暂未配置嵌入地址</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 全屏按钮 -->
+  {% if game.embed_url %}
+  <div class="game-play-actions">
+    <button class="btn btn-outline" id="fullscreenBtn" title="全屏游戏">
+      <i class="fas fa-expand"></i> 全屏
+    </button>
+  </div>
+  {% endif %}
+
+  <!-- 游戏描述 -->
+  {% if game.description %}
+  <div class="game-play-desc">
+    <h3><i class="fas fa-info-circle"></i> 游戏介绍</h3>
+    <p>{{ game.description }}</p>
+  </div>
+  {% endif %}
+
+  <!-- 相关游戏 -->
+  {% if related %}
+  <div class="game-play-related">
+    <h3><i class="fas fa-th-large"></i> 更多{{ game.category }}游戏</h3>
+    <div class="game-grid">
+      {% for g in related %}
+      <a href="{{ url_for('game.game_play', game_id=g.id) }}" class="game-card">
+        <div class="game-card-cover">
+          {% if g.cover_image %}
+          <img src="{{ url_for('static', filename='covers/' + g.cover_image) }}" alt="" loading="lazy">
+          {% else %}
+          <div class="game-card-placeholder" style="background:{{ category_colors.get(g.category, '#6366f1') }};">
+            <i class="fas {{ category_icons.get(g.category, 'fa-gamepad') }}"></i>
+          </div>
+          {% endif %}
+        </div>
+        <div class="game-card-body">
+          <h3>{{ g.title }}</h3>
+          <div class="game-card-meta">
+            <span><i class="fas fa-play"></i> {{ g.play_count }}</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('fullscreenBtn').addEventListener('click', function() {
+  var iframe = document.querySelector('.game-iframe');
+  if (iframe) {
+    if (iframe.requestFullscreen) {
+      iframe.requestFullscreen();
+    } else if (iframe.webkitRequestFullscreen) {
+      iframe.webkitRequestFullscreen();
+    } else if (iframe.msRequestFullscreen) {
+      iframe.msRequestFullscreen();
+    }
+  }
+});
+</script>
+{% endblock %}

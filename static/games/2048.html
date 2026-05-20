@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{display:flex;justify-content:center;align-items:center;min-height:100vh;background:#faf8ef;font-family:Arial,sans-serif;overflow:hidden}
+.game-box{position:relative;width:min(95vmin,500px);height:min(95vmin,500px);background:#bbada0;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:12px}
+.header{display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:3rem;color:#776e65;margin:0}
+.scores{display:flex;gap:8px}
+.score-box{background:#8f7a66;color:#fff;padding:6px 16px;border-radius:4px;text-align:center;min-width:70px}
+.score-box .label{font-size:0.7rem;text-transform:uppercase;opacity:0.8}
+.score-box .val{font-size:1.3rem;font-weight:bold}
+.grid-wrap{position:relative;flex:1;background:#bbada0;border-radius:4px}
+.grid-bg{position:absolute;inset:8px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:8px}
+.cell-bg{background:rgba(238,228,218,0.35);border-radius:4px}
+.cells{position:absolute;inset:8px}
+.tile{position:absolute;display:flex;align-items:center;justify-content:center;font-weight:bold;border-radius:4px;transition:transform 0.1s,left 0.1s,top 0.1s;z-index:1}
+.tile.new{animation:pop 0.2s}
+@keyframes pop{0%{transform:scale(0)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+.btn{background:#8f7a66;color:#fff;border:none;padding:10px 20px;border-radius:4px;font-size:0.9rem;cursor:pointer;font-weight:bold}
+.btn:hover{opacity:0.85}
+.game-over-overlay{position:absolute;inset:0;background:rgba(238,228,218,0.73);display:flex;align-items:center;justify-content:center;border-radius:4px;z-index:10}
+.game-over-overlay p{font-size:2rem;font-weight:bold;color:#776e65;text-align:center}
+</style>
+</head>
+<body>
+<div class="game-box">
+  <div class="header">
+    <h1>2048</h1>
+    <div class="scores">
+      <div class="score-box"><div class="label">分数</div><div class="val" id="score">0</div></div>
+      <div class="score-box"><div class="label">最高</div><div class="val" id="best">0</div></div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <span style="color:#776e65;font-size:0.85rem;">合并数字，达到<b>2048</b>！</span>
+    <button class="btn" onclick="restart()">新游戏</button>
+  </div>
+  <div class="grid-wrap" id="gridWrap">
+    <div class="grid-bg"><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div><div class="cell-bg"></div></div>
+    <div class="cells" id="cells"></div>
+  </div>
+</div>
+<script>
+(function(){
+var grid=[], score=0, best=parseInt(localStorage.getItem('best2048'))||0;
+var cellsEl=document.getElementById('cells'), scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
+var tileColors={
+  '0':{bg:'#cdc1b4',fg:'#776e65'},'2':{bg:'#eee4da',fg:'#776e65'},'4':{bg:'#ede0c8',fg:'#776e65'},
+  '8':{bg:'#f2b179',fg:'#f9f6f2'},'16':{bg:'#f59563',fg:'#f9f6f2'},'32':{bg:'#f67c5f',fg:'#f9f6f2'},
+  '64':{bg:'#f65e3b',fg:'#f9f6f2'},'128':{bg:'#edcf72',fg:'#f9f6f2'},'256':{bg:'#edcc61',fg:'#f9f6f2'},
+  '512':{bg:'#edc850',fg:'#f9f6f2'},'1024':{bg:'#edc53f',fg:'#f9f6f2'},'2048':{bg:'#edc22e',fg:'#f9f6f2'},
+  '4096':{bg:'#3c3a32',fg:'#f9f6f2'},'8192':{bg:'#3c3a32',fg:'#f9f6f2'}
+};
+bestEl.textContent=best;
+
+function initGrid(){
+  grid=Array.from({length:4},function(){return Array(4).fill(0)});
+  score=0;scoreEl.textContent='0';
+  addTile();addTile();render();
+}
+function addTile(){
+  var empty=[];
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++)if(grid[r][c]===0)empty.push([r,c]);
+  if(!empty.length)return false;
+  var p=empty[Math.floor(Math.random()*empty.length)];
+  grid[p[0]][p[1]]=Math.random()<0.9?2:4;
+  return true;
+}
+function render(){
+  cellsEl.innerHTML='';
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++){
+    var v=grid[r][c];
+    if(!v)continue;
+    var t=document.createElement('div');t.className='tile';
+    var size=(cellsEl.clientWidth-24)/4;
+    t.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(c*(size+8))+'px;top:'+(r*(size+8))+'px;'+
+      'background:'+(tileColors[v]||tileColors['8192']).bg+';color:'+(tileColors[v]||tileColors['8192']).fg+';'+
+      'font-size:'+(v>=1000?'1.4rem':v>=100?'1.8rem':'2.2rem')+';';
+    t.textContent=v;cellsEl.appendChild(t);
+  }
+  scoreEl.textContent=score;
+  if(score>best){best=score;bestEl.textContent=best;localStorage.setItem('best2048',best);}
+
+  // Check game over
+  if(isGameOver()){
+    var ov=document.createElement('div');ov.className='game-over-overlay';
+    ov.innerHTML='<p>游戏结束!<br><span style="font-size:1rem;">得分: '+score+'</span><br><button class="btn" onclick="restart()" style="margin-top:12px;">再来一局</button></p>';
+    document.getElementById('gridWrap').appendChild(ov);
+  }
+}
+function isGameOver(){
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++){
+    if(grid[r][c]===0)return false;
+    if(c<3&&grid[r][c]===grid[r][c+1])return false;
+    if(r<3&&grid[r][c]===grid[r+1][c])return false;
+  }
+  return true;
+}
+function slide(row){
+  var arr=row.filter(function(x){return x!==0}),res=[],i=0;
+  while(i<arr.length){
+    if(i+1<arr.length&&arr[i]===arr[i+1]){res.push(arr[i]*2);score+=arr[i]*2;i+=2;}
+    else{res.push(arr[i]);i++;}
+  }
+  while(res.length<4)res.push(0);
+  return res;
+}
+function move(dir){
+  var old=JSON.stringify(grid),flipped=false;
+  for(var r=0;r<4;r++){
+    var row;
+    if(dir==='left')row=slide(grid[r]);
+    else if(dir==='right')row=slide(grid[r].slice().reverse()).reverse();
+    else if(dir==='up')row=grid.map(function(x){return x[r]});
+    else row=grid.map(function(x){return x[r]}).reverse();
+    if(dir==='up'){var s=slide(row);for(var c=0;c<4;c++)grid[c][r]=s[c];}
+    else if(dir==='down'){var s2=slide(row).reverse();for(var c2=0;c2<4;c2++)grid[c2][r]=s2[c2];}
+    else{grid[r]=dir==='left'?slide(grid[r]):slide(grid[r].slice().reverse()).reverse();}
+  }
+  if(JSON.stringify(grid)!==old){addTile();render();}
+}
+function handleKey(e){
+  var map={37:'left',38:'up',39:'right',40:'down'};
+  if(map[e.keyCode]){e.preventDefault();move(map[e.keyCode]);}
+}
+var touchStartX,touchStartY;
+document.addEventListener('touchstart',function(e){touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY});
+document.addEventListener('touchend',function(e){
+  var dx=(e.changedTouches[0].clientX-touchStartX),dy=(e.changedTouches[0].clientY-touchStartY);
+  if(Math.abs(dx)<20&&Math.abs(dy)<20)return;
+  move(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));
+});
+document.addEventListener('keydown',handleKey);
+window.addEventListener('resize',render);
+window.restart=function(){var ov=document.querySelector('.game-over-overlay');if(ov)ov.remove();initGrid();};
+initGrid();
+})();
+</script>
+</body>
+</html>

@@ -7,8 +7,9 @@ from flask_socketio import SocketIO
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from config import config_map
-from models import db, User, scan_videos
+from models import db, User, scan_videos, seed_games
 from routes.video import CATEGORIES, CATEGORY_ICONS
+from routes.games import GAME_CATEGORIES, GAME_CATEGORY_ICONS, GAME_CATEGORY_COLORS
 from routes import register_blueprints
 from events import register_events
 
@@ -57,6 +58,8 @@ def create_app(config_name=None):
     def inject_user():
         user_id = session.get('user_id')
         ctx = dict(categories=CATEGORIES, category_icons=CATEGORY_ICONS,
+                   game_categories=GAME_CATEGORIES, game_category_icons=GAME_CATEGORY_ICONS,
+                   game_category_colors=GAME_CATEGORY_COLORS,
                    now=datetime.datetime.now())
         if user_id:
             user = db.session.get(User, user_id)
@@ -113,6 +116,7 @@ def create_app(config_name=None):
     with app.app_context():
         db.create_all()
         scan_videos()
+        seed_games()
 
     return app
 

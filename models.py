@@ -274,6 +274,27 @@ class CommentLike(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'comment_id', name='uq_comment_like'),)
 
 
+class Game(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, default='')
+    category = db.Column(db.String(20), default='综合', index=True)
+    cover_image = db.Column(db.String(300), default='')
+    embed_url = db.Column(db.String(500), default='')
+    play_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    @property
+    def cover_url(self):
+        if self.cover_image:
+            return f'covers/{self.cover_image}'
+        return None
+
+    @property
+    def is_external(self):
+        return self.embed_url.startswith('http://') or self.embed_url.startswith('https://')
+
+
 # ── Feed 推送 ────────────────────────────────────────────
 
 def push_feed(actor_id, action, video_id):
@@ -490,3 +511,26 @@ def _fallback_hot(limit):
      .order_by(db.text('popularity DESC')) \
      .limit(limit) \
      .all()
+
+
+# ── 游戏种子数据 ──────────────────────────────────────────
+
+def seed_games():
+    from routes.games import GAME_CATEGORIES
+    existing = {g.title for g in Game.query.all()}
+    seed_data = [
+        ('2048', '经典数字合并益智游戏！滑动方块，相同数字合并翻倍，挑战2048方块。简约设计，无限重玩，适合所有年龄段玩家。', '益智', '/static/games/2048.html'),
+        ('贪吃蛇', '经典贪吃蛇游戏回归！控制小蛇吃食物变长，挑战最高分。随着蛇身越来越长，难度越来越大，你敢来挑战吗？', '休闲', '/static/games/snake.html'),
+        ('俄罗斯方块', '永远的经典！不同形状的方块从天而降，旋转、移动、消除填满的行。考验反应力和空间想象力，看你能撑多久！', '益智', '/static/games/tetris.html'),
+    ]
+    added = 0
+    for title, desc, cat, url in seed_data:
+        if title in existing:
+            continue
+        if cat not in GAME_CATEGORIES:
+            cat = '综合'
+        db.session.add(Game(title=title, description=desc, category=cat, embed_url=url))
+        added += 1
+    if added:
+        db.session.commit()
+        logging.info('seed_games: 已添加 %d 款游戏', added)
