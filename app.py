@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from config import config_map
 from models import db, User, scan_videos
+from routes.video import CATEGORIES, CATEGORY_ICONS
 from routes import register_blueprints
 from events import register_events
 
@@ -55,10 +56,14 @@ def create_app(config_name=None):
     @app.context_processor
     def inject_user():
         user_id = session.get('user_id')
+        ctx = dict(categories=CATEGORIES, category_icons=CATEGORY_ICONS,
+                   now=datetime.datetime.now())
         if user_id:
             user = db.session.get(User, user_id)
-            return dict(current_user=user, now=datetime.datetime.now())
-        return dict(current_user=None, now=datetime.datetime.now())
+            ctx['current_user'] = user
+        else:
+            ctx['current_user'] = None
+        return ctx
 
     # ── JWT 过期处理（返回 JSON，前端拦截 401） ──────────
     @jwt.expired_token_loader

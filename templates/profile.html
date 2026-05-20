@@ -13,7 +13,7 @@
     <div class="us-avatar"><div class="avatar-placeholder" style="width:80px;height:80px;font-size:30px;">{{ current_user.username[0] | upper }}</div></div>
   {% endif %}
   <div class="us-info">
-    <h1>{{ current_user.username }}</h1>
+    <h1>{{ current_user.username }} <span class="level-badge" style="background:{{ current_user.level_color }}">Lv{{ current_user.level }}</span></h1>
     <p class="us-bio"><i class="fas fa-envelope"></i> {{ current_user.email }}</p>
     <div class="us-stats">
       <span><strong>{{ user_videos|length }}</strong> 视频</span>
@@ -55,7 +55,11 @@
   <div class="video-card">
     <a href="{{ url_for('video.video_page', video_id=v.id) }}" style="text-decoration:none;color:inherit;">
       <div class="video-card-thumb">
+        {% if v.cover_image %}
+        <img src="{{ url_for('static', filename='covers/' + v.cover_image) }}" alt="" loading="lazy">
+        {% else %}
         <i class="fas fa-play-circle"></i>
+        {% endif %}
         {% if v.duration_hms %}
         <span class="video-card-duration">{{ v.duration_hms }}</span>
         {% endif %}

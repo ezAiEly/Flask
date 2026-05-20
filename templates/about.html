@@ -3,31 +3,33 @@
 {% block title %}关于{% endblock %}
 {% block content %}
 
-<div class="about-hero" style="text-align:center;padding:2rem 0 1.5rem;">
-  <i class="fas fa-play-circle" style="font-size:3.5rem;color:var(--primary-color);display:block;margin-bottom:0.75rem;"></i>
-  <h1 style="font-size:1.8rem;font-weight:700;">关于视频社区</h1>
-  <p class="text-muted" style="font-size:1rem;max-width:480px;margin:0.5rem auto 0;">一个类 B 站风格的视频分享与弹幕互动平台</p>
-</div>
-
-<div class="about-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
-
-  <div class="card" style="border-top:3px solid var(--primary-color);">
-    <h3 style="margin-bottom:0.75rem;"><i class="fas fa-code" style="color:var(--primary-color);"></i> 技术栈</h3>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">Flask</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">SQLAlchemy</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">JWT</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">SocketIO</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">SQLite</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">Canvas API</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">video.js</span>
-      <span class="about-tag" style="background:var(--primary-light);color:var(--primary-color);padding:4px 12px;border-radius:4px;font-size:0.82rem;">pytest</span>
-    </div>
+<section class="about-hero">
+  <div class="about-hero-icon">
+    <i class="fas fa-play-circle"></i>
   </div>
+  <h1>关于视频社区</h1>
+  <p class="text-muted about-hero-desc">一个类 B 站风格的视频分享与弹幕互动平台</p>
+</section>
 
-  <div class="card" style="border-top:3px solid var(--pink-color);">
-    <h3 style="margin-bottom:0.75rem;"><i class="fas fa-star" style="color:var(--pink-color);"></i> 主要功能</h3>
-    <ul style="padding-left:1.2rem;margin:0;font-size:0.9rem;line-height:2;color:var(--text-color);">
+<div class="about-grid">
+
+  <article class="card about-card about-card--tech">
+    <h3 class="about-card-title"><i class="fas fa-code about-card-icon about-card-icon--tech"></i> 技术栈</h3>
+    <div class="about-tag-list">
+      <span class="about-tag">Flask</span>
+      <span class="about-tag">SQLAlchemy</span>
+      <span class="about-tag">JWT</span>
+      <span class="about-tag">SocketIO</span>
+      <span class="about-tag">SQLite</span>
+      <span class="about-tag">Canvas API</span>
+      <span class="about-tag">video.js</span>
+      <span class="about-tag">pytest</span>
+    </div>
+  </article>
+
+  <article class="card about-card about-card--features">
+    <h3 class="about-card-title"><i class="fas fa-star about-card-icon about-card-icon--features"></i> 主要功能</h3>
+    <ul class="about-feature-list">
       <li>用户注册与登录（JWT + Session）</li>
       <li>视频上传与播放（支持 20GB 大文件）</li>
       <li>实时弹幕系统（8 色可选，WebSocket）</li>
@@ -37,25 +39,25 @@
       <li>用户空间 + 动态时间线</li>
       <li>头像上传与 MIME 校验</li>
     </ul>
-  </div>
+  </article>
 
-  <div class="card" style="border-top:3px solid var(--success-color);">
-    <h3 style="margin-bottom:0.75rem;"><i class="fas fa-shield-alt" style="color:var(--success-color);"></i> 安全特性</h3>
-    <ul style="padding-left:1.2rem;margin:0;font-size:0.9rem;line-height:2;color:var(--text-color);">
+  <article class="card about-card about-card--security">
+    <h3 class="about-card-title"><i class="fas fa-shield-alt about-card-icon about-card-icon--security"></i> 安全特性</h3>
+    <ul class="about-feature-list">
       <li>CSRF 防护（Flask-WTF）</li>
       <li>JWT 过期自动跳转登录</li>
       <li>图片 MIME 类型校验（PIL）</li>
       <li>密码哈希存储（Werkzeug）</li>
       <li>文件名安全处理</li>
     </ul>
-  </div>
+  </article>
 
 </div>
 
-<div class="card mt-2 text-center" style="padding:2rem;">
-  <i class="fas fa-smile" style="font-size:2.5rem;color:var(--text-muted);display:block;margin-bottom:0.5rem;"></i>
-  <p style="font-size:1rem;color:var(--text-color);margin:0;">感谢使用视频社区，祝你玩得开心！</p>
-  <a href="{{ url_for('main.contact') }}" class="btn btn-outline mt-2" style="width:auto;"><i class="fas fa-envelope"></i> 联系我们</a>
-</div>
+<footer class="card about-footer">
+  <i class="fas fa-smile about-footer-icon"></i>
+  <p class="text-muted">感谢使用视频社区，祝你玩得开心！</p>
+  <a href="{{ url_for('main.contact') }}" class="btn btn-outline"><i class="fas fa-envelope"></i> 联系我们</a>
+</footer>
 
 {% endblock %}

@@ -4,7 +4,7 @@ import datetime
 from flask import (Blueprint, render_template, request, session, abort,
                    redirect, url_for, flash, jsonify, current_app)
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView, Tag
+from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView, Tag, Comment, CommentLike
 from models import allowed_video_file, push_feed, get_video_duration, set_video_tags
 from models import get_recommendations, _fallback_hot, get_hot_videos
 
@@ -61,14 +61,47 @@ def upload_video():
             filename = f"{uuid.uuid4().hex}.{ext}"
             file.save(os.path.join(upload_folder, filename))
 
+            category = request.form.get('category', '').strip()
+            if category not in CATEGORIES:
+                category = ''
+
             video = Video(
                 title=title,
                 description=description,
                 filename=filename,
+                category=category,
                 user_id=session['user_id']
             )
             db.session.add(video)
             db.session.flush()
+
+            # Handle cover image
+            cover_file = request.files.get('cover_file')
+            cover_dir = os.path.join(current_app.static_folder, 'covers')
+            os.makedirs(cover_dir, exist_ok=True)
+            if cover_file and cover_file.filename:
+                ext = cover_file.filename.rsplit('.', 1)[-1].lower()
+                if ext in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+                    cover_name = f"{filename.rsplit('.', 1)[0]}.{ext}"
+                    cover_file.save(os.path.join(cover_dir, cover_name))
+                    video.cover_image = cover_name
+            if not video.cover_image:
+                # Try ffmpeg thumbnail extraction at 3s
+                try:
+                    import subprocess
+                    video_path = os.path.join(upload_folder, filename)
+                    cover_name = f"{filename.rsplit('.', 1)[0]}.jpg"
+                    cover_path = os.path.join(cover_dir, cover_name)
+                    subprocess.run(
+                        ['ffmpeg', '-i', video_path, '-ss', '00:00:03',
+                         '-vframes', '1', '-q:v', '2', cover_path, '-y'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        timeout=30
+                    )
+                    if os.path.exists(cover_path):
+                        video.cover_image = cover_name
+                except Exception:
+                    pass
 
             tags_raw = request.form.get('tags', '').strip()
             if tags_raw:
@@ -105,6 +138,60 @@ def delete_video(video_id):
     db.session.commit()
     flash('视频已删除', 'info')
     return redirect(url_for('main.index'))
+
+
+# ── 搜索 ─────────────────────────────────────────────────
+
+@video_bp.route('/search')
+def search():
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    if not query:
+        return render_template('search.html', query='', videos=[], page=1, has_more=False)
+
+    pattern = f'%{query}%'
+    base_q = (Video.query
+              .filter(Video.title.like(pattern) | Video.description.like(pattern))
+              .order_by(Video.views.desc()))
+
+    total = base_q.count()
+    videos = base_q.offset(offset).limit(per_page + 1).all()
+    has_more = len(videos) > per_page
+    videos = videos[:per_page]
+
+    return render_template('search.html', query=query, videos=videos,
+                           page=page, has_more=has_more, total=total)
+
+
+@video_bp.route('/api/search')
+def search_api():
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    limit = min(request.args.get('limit', 20, type=int), 50)
+    offset = (page - 1) * limit
+
+    if not query:
+        return jsonify({'videos': [], 'page': 1, 'has_more': False})
+
+    pattern = f'%{query}%'
+    base_q = (Video.query
+              .filter(Video.title.like(pattern) | Video.description.like(pattern))
+              .order_by(Video.views.desc()))
+
+    total = base_q.count()
+    items = base_q.offset(offset).limit(limit + 1).all()
+    has_more = len(items) > limit
+    items = items[:limit]
+
+    return jsonify({
+        'videos': [_serialize_video(v) for v in items],
+        'page': page,
+        'total': total,
+        'has_more': has_more,
+    })
 
 
 # ── 弹幕 REST API ────────────────────────────────────────
@@ -233,6 +320,130 @@ def toggle_favorite(video_id):
     return jsonify({'favorited': True, 'favorite_count': count})
 
 
+# ── 评论 API ─────────────────────────────────────────────
+
+def _serialize_comment(c, user_id):
+    return {
+        'id': c.id,
+        'content': c.content,
+        'parent_id': c.parent_id,
+        'created_at': c.created_at.isoformat(),
+        'user': {
+            'id': c.user.id,
+            'username': c.user.username,
+            'avatar': c.user.avatar,
+        },
+        'like_count': c.likes.count() if hasattr(c, 'likes') else
+                      CommentLike.query.filter_by(comment_id=c.id).count(),
+        'liked': user_id is not None and
+                 CommentLike.query.filter_by(user_id=user_id, comment_id=c.id).first() is not None,
+    }
+
+
+@video_bp.route('/api/video/<int:video_id>/comments')
+def get_comments(video_id):
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
+    user_id = session.get('user_id')
+    sort = request.args.get('sort', 'newest')
+    page = request.args.get('page', 1, type=int)
+    limit = min(request.args.get('limit', 20, type=int), 50)
+    offset = (page - 1) * limit
+
+    base = Comment.query.filter_by(video_id=video_id, parent_id=None)
+
+    if sort == 'hottest':
+        comments = (base.outerjoin(CommentLike, CommentLike.comment_id == Comment.id)
+                    .group_by(Comment.id)
+                    .order_by(db.func.count(CommentLike.id).desc(), Comment.created_at.desc())
+                    .offset(offset).limit(limit + 1).all())
+    else:
+        comments = base.order_by(Comment.created_at.desc()).offset(offset).limit(limit + 1).all()
+
+    has_more = len(comments) > limit
+    comments = comments[:limit]
+
+    # Load replies for each comment
+    result = []
+    for c in comments:
+        item = _serialize_comment(c, user_id)
+        item['replies'] = [_serialize_comment(r, user_id)
+                          for r in Comment.query.filter_by(parent_id=c.id)
+                          .order_by(Comment.created_at.asc()).limit(5).all()]
+        item['reply_count'] = Comment.query.filter_by(parent_id=c.id).count()
+        result.append(item)
+
+    return jsonify({'comments': result, 'page': page, 'has_more': has_more})
+
+
+@video_bp.route('/api/video/<int:video_id>/comments', methods=['POST'])
+def create_comment(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    content = (data.get('content', '') or '').strip()
+    if not content:
+        return jsonify({'error': '评论内容不能为空'}), 400
+    if len(content) > 1000:
+        return jsonify({'error': '评论不能超过1000字'}), 400
+
+    video = db.session.get(Video, video_id)
+    if video is None:
+        abort(404)
+
+    comment = Comment(user_id=user_id, video_id=video_id, content=content)
+    db.session.add(comment)
+    db.session.commit()
+
+    return jsonify(_serialize_comment(comment, user_id)), 201
+
+
+@video_bp.route('/api/comments/<int:comment_id>/reply', methods=['POST'])
+def reply_comment(comment_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    parent = db.session.get(Comment, comment_id)
+    if parent is None:
+        abort(404)
+
+    data = request.get_json() or {}
+    content = (data.get('content', '') or '').strip()
+    if not content:
+        return jsonify({'error': '回复内容不能为空'}), 400
+    if len(content) > 1000:
+        return jsonify({'error': '回复不能超过1000字'}), 400
+
+    user_id = session['user_id']
+    reply = Comment(user_id=user_id, video_id=parent.video_id,
+                    content=content, parent_id=comment_id)
+    db.session.add(reply)
+    db.session.commit()
+
+    return jsonify(_serialize_comment(reply, user_id)), 201
+
+
+@video_bp.route('/api/comments/<int:comment_id>/like', methods=['POST'])
+def toggle_comment_like(comment_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    comment = db.session.get(Comment, comment_id)
+    if comment is None:
+        abort(404)
+
+    existing = CommentLike.query.filter_by(user_id=user_id, comment_id=comment_id).first()
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        return jsonify({'liked': False, 'like_count': CommentLike.query.filter_by(comment_id=comment_id).count()})
+
+    db.session.add(CommentLike(user_id=user_id, comment_id=comment_id))
+    db.session.commit()
+    return jsonify({'liked': True, 'like_count': CommentLike.query.filter_by(comment_id=comment_id).count()})
+
+
 # ── 序列化辅助 ───────────────────────────────────────────
 
 def _serialize_video(v):
@@ -244,6 +455,8 @@ def _serialize_video(v):
         'src': v.src,
         'duration': v.duration,
         'duration_hms': v.duration_hms,
+        'cover_image': v.cover_image,
+        'category': v.category,
         'views': v.views,
         'tags': [t.name for t in v.tags] if v.tags else [],
         'created_at': v.created_at.isoformat(),
@@ -253,6 +466,44 @@ def _serialize_video(v):
             'avatar': v.user.avatar,
         },
     }
+
+
+# ── 分类 ─────────────────────────────────────────────────
+
+CATEGORIES = ['动画', '音乐', '游戏', '知识', '科技', '生活', '时尚', '娱乐']
+CATEGORY_ICONS = {
+    '动画': 'fa-film', '音乐': 'fa-music', '游戏': 'fa-gamepad',
+    '知识': 'fa-graduation-cap', '科技': 'fa-microchip',
+    '生活': 'fa-heart', '时尚': 'fa-tshirt', '娱乐': 'fa-laugh',
+}
+
+
+@video_bp.route('/category/<category_name>')
+def category_page(category_name):
+    if category_name not in CATEGORIES:
+        abort(404)
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    base = (Video.query.filter_by(category=category_name)
+            .order_by(Video.views.desc()))
+    total = base.count()
+    videos = base.offset(offset).limit(per_page + 1).all()
+    has_more = len(videos) > per_page
+    videos = videos[:per_page]
+
+    return render_template('category.html', category_name=category_name,
+                           videos=videos, page=page, has_more=has_more,
+                           total=total, category_icon=CATEGORY_ICONS.get(category_name, 'fa-folder'))
+
+
+@video_bp.route('/api/categories')
+def api_categories():
+    return jsonify({
+        cat: Video.query.filter_by(category=cat).count()
+        for cat in CATEGORIES
+    })
 
 
 # ── 推荐 API ─────────────────────────────────────────────

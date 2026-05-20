@@ -4,7 +4,7 @@ import datetime
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify, current_app)
 from werkzeug.utils import secure_filename
-from models import db, User, Video, Feed, allowed_file, validate_image_mime
+from models import db, User, Video, Feed, VideoView, allowed_file, validate_image_mime
 
 main_bp = Blueprint('main', __name__)
 
@@ -178,6 +178,45 @@ def my_feed():
         'video_title': f.video.title if f.video else None,
         'created_at': f.created_at.isoformat()
     } for f in feeds]})
+
+
+@main_bp.route('/history')
+def history():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login_page', next=request.path))
+    user_id = session['user_id']
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    sub = (db.session.query(VideoView.video_id,
+           db.func.max(VideoView.viewed_at).label('last_viewed'))
+           .filter_by(user_id=user_id)
+           .group_by(VideoView.video_id)
+           .subquery())
+
+    total = db.session.query(db.func.count()).select_from(sub).scalar()
+    rows = (db.session.query(sub.c.video_id, sub.c.last_viewed)
+            .order_by(sub.c.last_viewed.desc())
+            .offset(offset).limit(per_page + 1).all())
+    has_more = len(rows) > per_page
+    rows = rows[:per_page]
+
+    video_ids = [r.video_id for r in rows]
+    videos_map = {v.id: v for v in Video.query.filter(Video.id.in_(video_ids)).all()} if video_ids else {}
+    history_items = [(videos_map.get(r.video_id), r.last_viewed) for r in rows if r.video_id in videos_map]
+
+    return render_template('history.html', history_items=history_items,
+                           page=page, has_more=has_more, total=total or 0)
+
+
+@main_bp.route('/api/history/clear', methods=['POST'])
+def clear_history():
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    VideoView.query.filter_by(user_id=session['user_id']).delete()
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 @main_bp.route('/routes')

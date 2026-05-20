@@ -27,7 +27,7 @@
   <p class="video-desc">{{ video.description }}</p>
   {% endif %}
   {% if current_user and current_user.id == video.user_id %}
-  <div style="margin-top:12px;">
+  <div class="video-owner-actions">
     <form method="POST" action="{{ url_for('video.delete_video', video_id=video.id) }}"
           onsubmit="return confirm('确定删除视频「{{ video.title }}」？此操作不可撤销。');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -65,6 +65,31 @@
     <a href="{{ url_for('auth.login_page') }}">登录</a> 后即可发送弹幕
   </span>
   {% endif %}
+</div>
+
+<!-- 评论区 -->
+<div class="comments-section" id="commentsSection">
+  <h2 class="comments-title" id="commentsTitle">评论</h2>
+  <div class="comment-sort">
+    <button class="comment-sort-btn active" data-sort="newest">最新</button>
+    <button class="comment-sort-btn" data-sort="hottest">最热</button>
+  </div>
+  {% if current_user %}
+  <div class="comment-form">
+    <textarea id="commentInput" class="comment-textarea" placeholder="发一条友善的评论吧~" maxlength="1000"></textarea>
+    <div class="comment-form-actions">
+      <button id="commentSubmit" class="btn btn-primary">发表评论</button>
+    </div>
+  </div>
+  {% else %}
+  <div class="comment-login-hint">
+    <a href="{{ url_for('auth.login_page', next=request.path) }}">登录</a> 后即可发表评论
+  </div>
+  {% endif %}
+  <div id="commentList" class="comment-list"></div>
+  <div class="text-center mt-2 hidden" id="commentLoadMore">
+    <button class="btn btn-outline btn-sm" id="commentLoadMoreBtn">加载更多评论</button>
+  </div>
 </div>
 {% endblock %}
 
@@ -147,5 +172,165 @@
     }, 100);
   }
 })();
+
+  // ── 评论系统 ──
+  (function() {
+    var videoId = {{ video.id }};
+    var loggedIn = {{ 'true' if current_user else 'false' }};
+    var currentSort = 'newest';
+    var currentPage = 1;
+    var hasMore = false;
+    var loading = false;
+
+    var sortBtns = document.querySelectorAll('.comment-sort-btn');
+    var list = document.getElementById('commentList');
+    var loadMore = document.getElementById('commentLoadMore');
+    var loadMoreBtn = document.getElementById('commentLoadMoreBtn');
+
+    function fetchComments(reset) {
+      if (loading) return;
+      loading = true;
+      if (reset) { currentPage = 1; list.innerHTML = ''; }
+
+      var url = '/api/video/' + videoId + '/comments?sort=' + currentSort + '&page=' + currentPage + '&limit=20';
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        hasMore = data.has_more;
+        renderComments(data.comments);
+        loadMore.classList.toggle('hidden', !hasMore);
+      }).catch(function() {
+        showToast('加载评论失败', 'error');
+      }).finally(function() { loading = false; });
+    }
+
+    function renderComments(comments) {
+      comments.forEach(function(c) { list.appendChild(buildCommentItem(c)); });
+    }
+
+    function buildCommentItem(c) {
+      var div = document.createElement('div');
+      div.className = 'comment-item';
+      div.innerHTML =
+        '<div class="comment-avatar">' +
+          '<img src="' + (c.user.avatar && c.user.avatar.indexOf('/') > -1 ? '/static/' + c.user.avatar : '/static/avatars/' + (c.user.avatar || 'images/default-avatar.GIF')) + '" alt="' + escapeHtml(c.user.username) + '">' +
+        '</div>' +
+        '<div class="comment-body">' +
+          '<div class="comment-author">' + escapeHtml(c.user.username) + '</div>' +
+          '<div class="comment-text">' + escapeHtml(c.content) + '</div>' +
+          '<div class="comment-meta">' +
+            '<span>' + timeAgo(c.created_at) + '</span>' +
+            '<button class="comment-like-btn' + (c.liked ? ' active' : '') + '" data-id="' + c.id + '">' +
+              '<i class="fas fa-thumbs-up"></i> <span class="comment-like-count">' + (c.like_count || '') + '</span>' +
+            '</button>' +
+            (loggedIn ? '<button class="comment-reply-btn" data-id="' + c.id + '"><i class="fas fa-reply"></i> 回复</button>' : '') +
+          '</div>' +
+          '<div class="comment-reply-form hidden" id="replyForm' + c.id + '">' +
+            '<textarea class="comment-textarea comment-reply-textarea" placeholder="回复 ' + escapeHtml(c.user.username) + '…" maxlength="1000"></textarea>' +
+            '<button class="btn btn-primary btn-sm reply-submit-btn" data-id="' + c.id + '">回复</button>' +
+          '</div>' +
+          '<div class="comment-replies" id="replies' + c.id + '"></div>' +
+        '</div>';
+      return div;
+    }
+
+    function escapeHtml(str) {
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode(str));
+      return d.innerHTML;
+    }
+
+    function timeAgo(iso) {
+      var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+      return Math.floor(diff / 86400) + ' 天前';
+    }
+
+    // Sort buttons
+    sortBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        sortBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentSort = btn.dataset.sort;
+        fetchComments(true);
+      });
+    });
+
+    // Load more
+    loadMoreBtn.addEventListener('click', function() {
+      currentPage++;
+      fetchComments(false);
+    });
+
+    // Delegate click for like, reply, submit
+    list.addEventListener('click', function(e) {
+      var likeBtn = e.target.closest('.comment-like-btn');
+      var replyBtn = e.target.closest('.comment-reply-btn');
+      var submitBtn = e.target.closest('.reply-submit-btn');
+
+      if (likeBtn) {
+        if (!loggedIn) { showToast('请先登录', 'error'); return; }
+        var id = likeBtn.dataset.id;
+        fetch('/api/comments/' + id + '/like', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(data) {
+          var countEl = likeBtn.querySelector('.comment-like-count');
+          countEl.textContent = data.like_count || '';
+          likeBtn.classList.toggle('active', data.liked);
+        });
+      }
+
+      if (replyBtn) {
+        if (!loggedIn) { showToast('请先登录', 'error'); return; }
+        var form = document.getElementById('replyForm' + replyBtn.dataset.id);
+        form.classList.toggle('hidden');
+      }
+
+      if (submitBtn) {
+        var id = submitBtn.dataset.id;
+        var ta = document.querySelector('#replyForm' + id + ' textarea');
+        var content = ta.value.trim();
+        if (!content) return;
+        fetch('/api/comments/' + id + '/reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          var repliesEl = document.getElementById('replies' + id);
+          var replyDiv = buildCommentItem(data);
+          replyDiv.classList.add('comment-reply-item');
+          repliesEl.appendChild(replyDiv);
+          ta.value = '';
+          document.getElementById('replyForm' + id).classList.add('hidden');
+        });
+      }
+    });
+
+    // Post comment
+    {% if current_user %}
+    var commentInput = document.getElementById('commentInput');
+    document.getElementById('commentSubmit').addEventListener('click', function() {
+      var content = commentInput.value.trim();
+      if (!content) return;
+      fetch('/api/video/' + videoId + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        list.insertBefore(buildCommentItem(data), list.firstChild);
+        commentInput.value = '';
+        updateCommentCount(1);
+      });
+    });
+    {% endif %}
+
+    function updateCommentCount(delta) {
+      var title = document.getElementById('commentsTitle');
+      var match = title.textContent.match(/\d+/);
+      var count = (match ? parseInt(match[0]) : 0) + delta;
+      title.textContent = '评论 (' + count + ')';
+    }
+
+    // Init
+    fetchComments(true);
+  })();
 </script>
 {% endblock %}

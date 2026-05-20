@@ -114,6 +114,22 @@ class User(db.Model):
     def is_following(self, user):
         return self.followed.filter(followers.c.followed_id == user.id).count() > 0
 
+    @property
+    def level(self):
+        uploads = Video.query.filter_by(user_id=self.id).count()
+        likes = VideoLike.query.filter_by(user_id=self.id).count()
+        comments = Comment.query.filter_by(user_id=self.id).count()
+        views = db.session.query(db.func.count(VideoView.id)).filter_by(user_id=self.id).scalar() or 0
+        total = uploads + likes + comments + views
+        level = int((total ** 0.5) / 10)
+        return min(level, 6)
+
+    @property
+    def level_color(self):
+        colors = {0: '#9499a0', 1: '#00a1d6', 2: '#52c41a', 3: '#f59e0b',
+                  4: '#fa8c16', 5: '#f5222d', 6: '#722ed1'}
+        return colors.get(self.level, '#9499a0')
+
 
 # 标签关联表（定义在 Video 之前）
 video_tags = db.Table('video_tags',
@@ -128,13 +144,21 @@ class Video(db.Model):
     description = db.Column(db.Text, default='')
     filename = db.Column(db.String(300), nullable=False)
     duration = db.Column(db.Float, nullable=True)
+    category = db.Column(db.String(20), default='', index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     views = db.Column(db.Integer, default=0)
+    cover_image = db.Column(db.String(300), default='')
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     user = db.relationship('User', backref='videos', lazy=True)
     tags = db.relationship('Tag', secondary=video_tags, lazy='joined',
                            backref=db.backref('videos', lazy='dynamic'))
+
+    @property
+    def cover_url(self):
+        if self.cover_image:
+            return f'covers/{self.cover_image}'
+        return None
 
     @property
     def src(self):
@@ -226,6 +250,28 @@ class Feed(db.Model):
 
     actor = db.relationship('User', foreign_keys=[actor_id])
     video = db.relationship('Video')
+
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    user = db.relationship('User', backref='comments', lazy=True)
+    video = db.relationship('Video', backref='comments', lazy=True)
+    replies = db.relationship('Comment', backref=db.backref('parent', remote_side=[id]), lazy=True)
+    likes = db.relationship('CommentLike', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
+
+
+class CommentLike(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'comment_id', name='uq_comment_like'),)
 
 
 # ── Feed 推送 ────────────────────────────────────────────

@@ -20,6 +20,22 @@
     </div>
 
     <div class="form-group">
+      <label for="category">分区</label>
+      <select id="category" name="category">
+        <option value="">选择分区（可选）</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}">{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="cover_file">视频封面</label>
+      <input type="file" id="cover_file" name="cover_file" accept="image/png,image/jpeg,image/gif,image/webp">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">不上传则自动从视频截图</div>
+    </div>
+
+    <div class="form-group">
       <label for="tags_input">标签</label>
       <input type="text" id="tags_input" name="tags" placeholder="多个标签用逗号分隔，如：游戏,实况,搞笑" maxlength="300">
       <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">标签有助于推荐系统为你的视频找到合适的观众</div>

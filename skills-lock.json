@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "css": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "css/SKILL.md",
+      "computedHash": "5c7eb0aebe0bf60b466ae6794ed5f071d6f6f858aee508beb1e902b9a502811d"
+    },
+    "frontend-design": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "11303e576eef31350357a33dad5a20a5c404128e015bcb5a8f2e223b3fc5aabf"
+    },
+    "html": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "html/SKILL.md",
+      "computedHash": "4226da4aa3b024a1229a37ce6863b429b8cdfbde5aa13769910beb830ac7fd3f"
+    },
+    "htmlcsstoimage": {
+      "source": "vm0-ai/vm0-skills",
+      "sourceType": "github",
+      "skillPath": "htmlcsstoimage/SKILL.md",
+      "computedHash": "fce1f5943a80b701d82d2157e40bec3eb26842051bf85515df984727c4ea980d"
+    },
+    "landing-page": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/frontend/skills/landing-page/SKILL.md",
+      "computedHash": "931acb68b5d4b782b5c43bb166ae1e0ea7333c1cb294b7478dabb30e90f24517"
+    },
+    "scrape-webpage": {
+      "source": "adobe/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/aem/edge-delivery-services/skills/scrape-webpage/SKILL.md",
+      "computedHash": "680b4388ec56daf165964a129741502db9a68207887004415fc1e64e855b72aa"
+    },
+    "web-research": {
+      "source": "langchain-ai/deepagents",
+      "sourceType": "github",
+      "skillPath": "libs/cli/examples/skills/web-research/SKILL.md",
+      "computedHash": "c91e55da8a6e313c9ec9962ec2699ccef5caee1ea15c9d7a71db6274ab7c90b6"
+    }
+  }
+}

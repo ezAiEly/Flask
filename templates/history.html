@@ -1,0 +1,66 @@
+<!-- history.html -->
+{% extends "base.html" %}
+{% block title %}观看历史{% endblock %}
+{% block content %}
+
+<h1 style="margin-bottom:16px;">观看历史</h1>
+
+{% if history_items %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <span class="text-muted">共 {{ total }} 条记录</span>
+  <button class="btn btn-outline btn-sm" id="clearHistoryBtn">
+    <i class="fas fa-trash"></i> 清空历史
+  </button>
+</div>
+
+<div class="video-grid">
+  {% for v, viewed_at in history_items %}
+  <a href="{{ url_for('video.video_page', video_id=v.id) }}" class="video-card">
+    <div class="video-card-thumb">
+      {% if v.cover_image %}
+      <img src="{{ url_for('static', filename='covers/' + v.cover_image) }}" alt="" loading="lazy">
+      {% else %}
+      <i class="fas fa-play-circle"></i>
+      {% endif %}
+      {% if v.duration_hms %}
+      <span class="video-card-duration">{{ v.duration_hms }}</span>
+      {% endif %}
+    </div>
+    <div class="video-card-body">
+      <h3>{{ v.title }}</h3>
+      <div class="meta">
+        <span><i class="fas fa-user"></i> {{ v.user.username }}</span>
+        <span><i class="fas fa-eye"></i> {{ v.views }} 次播放</span>
+      </div>
+      <div class="meta" style="margin-top:4px;">
+        <span><i class="fas fa-clock"></i> {{ viewed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if has_more %}
+<div class="text-center mt-2">
+  <a href="{{ url_for('main.history', page=page+1) }}" class="btn btn-outline">加载更多</a>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <i class="fas fa-history empty-state-icon"></i>
+  <h2>暂无观看记录</h2>
+  <p class="text-muted">去看个视频吧！</p>
+  <a href="{{ url_for('main.index') }}" class="btn btn-primary mt-2">去逛逛</a>
+</div>
+{% endif %}
+
+<script>
+document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+  if (!confirm('确定清空所有观看记录？此操作不可撤销。')) return;
+  fetch('/api/history/clear', { method: 'POST' }).then(function(r) { return r.json(); }).then(function() {
+    window.location.reload();
+  });
+});
+</script>
+{% endblock %}

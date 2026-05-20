@@ -5,15 +5,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}视频社区{% endblock %}</title>
+  <!-- Prevent FOUC: apply theme before paint (landing-page skill dark mode pattern) -->
+  <script>
+    (function(){
+      var theme = localStorage.getItem('theme') || 'system';
+      if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
+<!-- Skip-to-content link -->
+<a href="#mainContent" class="skip-link">跳转到内容</a>
+
 <!-- ==================== Header ==================== -->
-<header id="header">
+<header id="header" role="banner">
   <div class="header-left">
-    <button class="sidebar-toggle" id="sidebarToggle" title="折叠侧边栏">
+    <button class="sidebar-toggle" id="sidebarToggle" title="折叠侧边栏" aria-expanded="true" aria-controls="sidebar" aria-label="切换侧边栏">
       <i class="fas fa-bars"></i>
     </button>
     <a href="{{ url_for('main.index') }}" class="header-logo">
@@ -22,34 +34,39 @@
     </a>
   </div>
 
-  <form class="header-search" action="/" method="GET" onsubmit="return false;">
-    <input type="text" name="q" class="search-input" placeholder="搜索视频…" autocomplete="off">
-    <button type="submit" class="search-btn"><i class="fas fa-search"></i></button>
+  <form class="header-search" action="/search" method="GET" role="search" aria-label="搜索视频">
+    <label for="searchInput" class="sr-only">搜索视频</label>
+    <input type="search" id="searchInput" name="q" class="search-input" placeholder="搜索视频…" autocomplete="off">
+    <button type="submit" class="search-btn" aria-label="搜索"><i class="fas fa-search"></i></button>
   </form>
 
   <div class="header-right">
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题" title="切换深色/浅色模式">
+      <i class="fas fa-moon" id="themeIcon"></i>
+    </button>
     {% if current_user %}
     <a href="{{ url_for('video.upload_video') }}" class="header-upload-btn" title="投稿">
       <i class="fas fa-cloud-upload-alt"></i>
       <span class="upload-text">投稿</span>
     </a>
     <div class="user-dropdown">
-      <div class="avatar" onclick="toggleDropdown()">
+      <button class="avatar" onclick="toggleDropdown()" aria-expanded="false" aria-haspopup="true" aria-label="用户菜单">
         {% if current_user.avatar %}
           {% if '/' in current_user.avatar %}
-            <img src="{{ url_for('static', filename=current_user.avatar) }}" alt="头像">
+            <img src="{{ url_for('static', filename=current_user.avatar) }}" alt="{{ current_user.username }}的头像">
           {% else %}
-            <img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="头像">
+            <img src="{{ url_for('static', filename='avatars/' + current_user.avatar) }}" alt="{{ current_user.username }}的头像">
           {% endif %}
         {% else %}
-          <div class="avatar-placeholder">{{ current_user.username[0] | upper }}</div>
+          <span class="avatar-placeholder" aria-hidden="true">{{ current_user.username[0] | upper }}</span>
         {% endif %}
-      </div>
-      <div id="dropdownMenu" class="dropdown-content">
-        <a href="{{ url_for('main.profile') }}"><i class="fas fa-user-circle"></i> 个人资料</a>
-        <a href="{{ url_for('main.user_space', username=current_user.username) }}"><i class="fas fa-home"></i> 我的空间</a>
-        <a href="{{ url_for('main.upload_avatar') }}"><i class="fas fa-camera"></i> 设置头像</a>
-        <a href="{{ url_for('auth.logout') }}" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
+      </button>
+      <div id="dropdownMenu" class="dropdown-content" role="menu" aria-label="用户操作菜单">
+        <a href="{{ url_for('main.profile') }}" role="menuitem"><i class="fas fa-user-circle"></i> 个人资料 <span class="level-badge" style="background:{{ current_user.level_color }}">Lv{{ current_user.level }}</span></a>
+        <a href="{{ url_for('main.user_space', username=current_user.username) }}" role="menuitem"><i class="fas fa-home"></i> 我的空间</a>
+        <a href="{{ url_for('main.history') }}" role="menuitem"><i class="fas fa-history"></i> 观看历史</a>
+        <a href="{{ url_for('main.upload_avatar') }}" role="menuitem"><i class="fas fa-camera"></i> 设置头像</a>
+        <a href="{{ url_for('auth.logout') }}" role="menuitem" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
       </div>
     </div>
     {% else %}
@@ -60,8 +77,8 @@
 </header>
 
 <!-- ==================== Sidebar ==================== -->
-<aside class="sidebar" id="sidebar">
-  <nav class="sidebar-nav">
+<aside class="sidebar" id="sidebar" aria-label="主导航侧边栏">
+  <nav class="sidebar-nav" role="navigation" aria-label="主导航">
     <a href="{{ url_for('main.index') }}" class="sidebar-item {% if request.endpoint == 'main.index' %}active{% endif %}" title="首页">
       <i class="fas fa-home"></i>
       <span class="sidebar-label">首页</span>
@@ -75,6 +92,10 @@
       <i class="fas fa-bell"></i>
       <span class="sidebar-label">动态</span>
     </a>
+    <a href="{{ url_for('main.history') }}" class="sidebar-item {% if request.endpoint == 'main.history' %}active{% endif %}" title="历史">
+      <i class="fas fa-history"></i>
+      <span class="sidebar-label">历史</span>
+    </a>
     {% endif %}
     <a href="{{ url_for('main.about') }}" class="sidebar-item {% if request.endpoint == 'main.about' %}active{% endif %}" title="关于">
       <i class="fas fa-info-circle"></i>
@@ -84,16 +105,25 @@
       <i class="fas fa-envelope"></i>
       <span class="sidebar-label">联系</span>
     </a>
+    <div class="sidebar-divider"></div>
+    {% for cat in categories %}
+    <a href="{{ url_for('video.category_page', category_name=cat) }}"
+       class="sidebar-item {% if request.endpoint == 'video.category_page' and request.view_args and request.view_args.get('category_name') == cat %}active{% endif %}"
+       title="{{ cat }}">
+      <i class="fas {{ category_icons.get(cat, 'fa-folder') }}"></i>
+      <span class="sidebar-label">{{ cat }}</span>
+    </a>
+    {% endfor %}
   </nav>
 </aside>
 
 <!-- ==================== Main ==================== -->
-<main id="mainContent">
+<main id="mainContent" role="main">
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-  <div class="flash-messages">
+  <div class="flash-messages" role="status" aria-live="polite">
     {% for category, message in messages %}
-    <div class="flash flash-{{ category }}">{{ message }}</div>
+    <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
     {% endfor %}
   </div>
   {% endif %}
@@ -114,14 +144,20 @@
 <script>
   // ── Dropdown ──────────────────────────────────────
   function toggleDropdown() {
-    document.getElementById("dropdownMenu").classList.toggle("show");
+    var menu = document.getElementById("dropdownMenu");
+    var btn = document.querySelector('.avatar');
+    var isOpen = menu.classList.toggle("show");
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
   window.onclick = function(event) {
     if (!event.target.matches('.avatar') && !event.target.closest('.avatar')) {
       var dropdowns = document.getElementsByClassName("dropdown-content");
       for (var i = 0; i < dropdowns.length; i++) {
-        dropdowns[i].classList.remove('show');
+        if (dropdowns[i].classList.contains('show')) {
+          dropdowns[i].classList.remove('show');
+          document.querySelector('.avatar').setAttribute('aria-expanded', 'false');
+        }
       }
     }
   }
@@ -177,10 +213,12 @@
         sidebar.classList.add('collapsed');
         main.classList.add('sidebar-collapsed');
         footer.classList.add('sidebar-collapsed');
+        toggle.setAttribute('aria-expanded', 'false');
       } else {
         sidebar.classList.remove('collapsed');
         main.classList.remove('sidebar-collapsed');
         footer.classList.remove('sidebar-collapsed');
+        toggle.setAttribute('aria-expanded', 'true');
       }
     }
 
@@ -190,6 +228,49 @@
       collapsed = !collapsed;
       localStorage.setItem('sidebar-collapsed', collapsed);
       applyState();
+    });
+  })();
+</script>
+
+  // ── Theme Toggle (3-state: light / dark / system) ──
+  (function() {
+    var html = document.documentElement;
+    var toggle = document.getElementById('themeToggle');
+    var icon = document.getElementById('themeIcon');
+    var currentTheme = localStorage.getItem('theme') || 'system';
+
+    var icons = { light: 'fa-sun', dark: 'fa-moon', system: 'fa-desktop' };
+    var labels = { light: '浅色模式', dark: '深色模式', system: '跟随系统' };
+
+    function applyTheme(theme) {
+      if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        html.setAttribute('data-theme', 'dark');
+      } else {
+        html.removeAttribute('data-theme');
+      }
+      icon.className = 'fas ' + icons[theme];
+      toggle.title = labels[theme];
+    }
+
+    function cycleTheme() {
+      var order = ['light', 'dark', 'system'];
+      var idx = order.indexOf(currentTheme);
+      currentTheme = order[(idx + 1) % 3];
+      localStorage.setItem('theme', currentTheme);
+      applyTheme(currentTheme);
+    }
+
+    // Initial apply
+    applyTheme(currentTheme);
+
+    // Enable transitions after load
+    setTimeout(function() { html.classList.add('theme-ready'); }, 100);
+
+    toggle.addEventListener('click', cycleTheme);
+
+    // Listen for system theme changes (only matters in system mode)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+      if (currentTheme === 'system') applyTheme('system');
     });
   })();
 </script>

@@ -17,7 +17,7 @@
     {% endif %}
   </div>
   <div class="us-info">
-    <h1>{{ space_user.username }}</h1>
+    <h1>{{ space_user.username }} <span class="level-badge" style="background:{{ space_user.level_color }}">Lv{{ space_user.level }}</span></h1>
     {% if space_user.bio %}
     <p class="us-bio">{{ space_user.bio }}</p>
     {% endif %}
@@ -51,7 +51,11 @@
     {% for v in videos %}
     <a href="{{ url_for('video.video_page', video_id=v.id) }}" class="video-card">
       <div class="video-card-thumb">
+        {% if v.cover_image %}
+        <img src="{{ url_for('static', filename='covers/' + v.cover_image) }}" alt="" loading="lazy">
+        {% else %}
         <i class="fas fa-play-circle"></i>
+        {% endif %}
         {% if v.duration_hms %}
         <span class="video-card-duration">{{ v.duration_hms }}</span>
         {% endif %}

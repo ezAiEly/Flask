@@ -115,7 +115,7 @@
 
       card.innerHTML =
         '<div class="video-card-thumb">' +
-          '<i class="fas fa-play-circle"></i>' +
+          (v.cover_image ? '<img src="/static/covers/' + escapeHtml(v.cover_image) + '" alt="" loading="lazy">' : '<i class="fas fa-play-circle"></i>') +
           (v.duration_hms
             ? '<span class="video-card-duration">' + escapeHtml(v.duration_hms) + '</span>'
             : '') +
