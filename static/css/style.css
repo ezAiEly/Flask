@@ -2447,3 +2447,304 @@ img[loading="lazy"] {
 img[loading="lazy"]:not([src]) {
   opacity: 0;
 }
+
+/* ===== 看板娘 Mascot ===== */
+
+.mascot {
+  position: fixed;
+  z-index: 999;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: filter 0.2s;
+}
+
+.mascot.dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+}
+
+.mascot-body {
+  position: relative;
+  width: 80px;
+  height: 90px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+  animation: mascot-float 3s ease-in-out infinite;
+}
+
+.mascot.dragging .mascot-body {
+  animation: none;
+}
+
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Face */
+.mascot-face {
+  position: absolute;
+  left: 15px;
+  top: 28px;
+  width: 50px;
+  height: 44px;
+  background: #ffe4c4;
+  border-radius: 50% 50% 48% 48%;
+  z-index: 2;
+}
+
+/* Hair back */
+.mascot-hair-back {
+  position: absolute;
+  left: 10px;
+  top: 20px;
+  width: 60px;
+  height: 50px;
+  background: #3d2b1f;
+  border-radius: 60% 60% 40% 40%;
+  z-index: 0;
+}
+
+/* Hair front (bangs) */
+.mascot-hair {
+  position: absolute;
+  left: 12px;
+  top: 22px;
+  width: 56px;
+  height: 28px;
+  background: #4a3728;
+  border-radius: 60% 60% 0 0;
+  z-index: 3;
+}
+
+.mascot-hair::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 10px;
+  width: 14px;
+  height: 18px;
+  background: #4a3728;
+  border-radius: 0 40% 40% 0;
+  transform: rotate(-15deg);
+}
+
+.mascot-hair::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 10px;
+  width: 14px;
+  height: 18px;
+  background: #4a3728;
+  border-radius: 40% 0 0 40%;
+  transform: rotate(15deg);
+}
+
+/* Eyes */
+.mascot-eye {
+  position: absolute;
+  top: 8px;
+  width: 16px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  border: 2px solid #3d2b1f;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.mascot-eye-left  { left: 6px; }
+.mascot-eye-right { right: 6px; }
+
+.mascot-pupil {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 10px;
+  background: #3d2b1f;
+  border-radius: 50%;
+  margin-left: -4px;
+  margin-top: -4px;
+  transition: transform 0.08s ease-out;
+}
+
+.mascot-pupil::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+/* Blush */
+.mascot-blush {
+  position: absolute;
+  top: 16px;
+  width: 10px;
+  height: 6px;
+  background: rgba(255,150,150,0.5);
+  border-radius: 50%;
+  z-index: 3;
+}
+
+.mascot-blush-left  { left: 0; }
+.mascot-blush-right { right: 0; }
+
+/* Mouth */
+.mascot-mouth {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  margin-left: -4px;
+  width: 8px;
+  height: 4px;
+  border-bottom: 2px solid #e88;
+  border-radius: 0 0 50% 50%;
+  z-index: 4;
+  transition: all 0.3s;
+}
+
+/* Happy expression */
+.mascot.happy .mascot-eye {
+  height: 3px;
+  border-top: 2px solid #3d2b1f;
+  border-bottom: none;
+  border-radius: 0;
+  background: transparent;
+  top: 10px;
+}
+
+.mascot.happy .mascot-pupil { display: none; }
+.mascot.happy .mascot-blush { background: rgba(255,120,120,0.7); }
+.mascot.happy .mascot-mouth {
+  width: 10px;
+  height: 6px;
+  border-bottom-width: 2.5px;
+  margin-left: -5px;
+}
+
+/* Arms */
+.mascot-arm {
+  position: absolute;
+  top: 50px;
+  width: 10px;
+  height: 22px;
+  background: #ffe4c4;
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.mascot-arm-left {
+  left: 5px;
+  transform: rotate(15deg);
+  transform-origin: top center;
+  animation: arm-swing 4s ease-in-out infinite;
+}
+
+.mascot-arm-right {
+  right: 5px;
+  transform: rotate(-15deg);
+  transform-origin: top center;
+  animation: arm-swing 4s ease-in-out 2s infinite;
+}
+
+@keyframes arm-swing {
+  0%, 100% { transform: rotate(15deg); }
+  50% { transform: rotate(25deg); }
+}
+
+.mascot-arm-right { animation-name: arm-swing-right; }
+@keyframes arm-swing-right {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(-25deg); }
+}
+
+/* Speech bubble */
+.mascot-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px);
+  background: #fff;
+  color: #333;
+  padding: 6px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.mascot-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: #fff;
+}
+
+.mascot-bubble.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-16px);
+}
+
+/* Tooltip */
+.mascot-tip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.mascot:hover .mascot-tip {
+  opacity: 0.7;
+}
+
+/* Dark mode */
+[data-theme="dark"] .mascot-bubble {
+  background: #2d2d2d;
+  color: #eee;
+}
+
+[data-theme="dark"] .mascot-bubble::after {
+  border-top-color: #2d2d2d;
+}
+
+[data-theme="dark"] .mascot-face,
+[data-theme="dark"] .mascot-arm {
+  background: #f0d5b8;
+}
+
+/* Mobile: smaller */
+@media (max-width: 640px) {
+  .mascot-body { width: 64px; height: 72px; }
+  .mascot-face { left: 12px; top: 22px; width: 40px; height: 35px; }
+  .mascot-hair-back { left: 8px; top: 16px; width: 48px; height: 40px; }
+  .mascot-hair { left: 10px; top: 18px; width: 44px; height: 22px; }
+  .mascot-eye { width: 13px; height: 15px; top: 6px; }
+  .mascot-eye-left { left: 4px; }
+  .mascot-eye-right { right: 4px; }
+  .mascot-pupil { width: 6px; height: 8px; }
+  .mascot-blush { top: 13px; width: 8px; height: 5px; }
+  .mascot-mouth { bottom: 6px; }
+  .mascot-arm { width: 8px; height: 18px; top: 40px; }
+  .mascot-arm-left { left: 4px; }
+  .mascot-arm-right { right: 4px; }
+  .mascot-tip { display: none; }
+}
