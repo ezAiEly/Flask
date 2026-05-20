@@ -106,7 +106,10 @@
 
 {% block scripts %}
 <script>
-document.getElementById('fullscreenBtn').addEventListener('click', function() {
+(function() {
+  var fb = document.getElementById('fullscreenBtn');
+  if (!fb) return;
+  fb.addEventListener('click', function() {
   var iframe = document.querySelector('.game-iframe');
   if (iframe) {
     if (iframe.requestFullscreen) {
@@ -117,6 +120,7 @@ document.getElementById('fullscreenBtn').addEventListener('click', function() {
       iframe.msRequestFullscreen();
     }
   }
-});
+  });
+})();
 </script>
 {% endblock %}

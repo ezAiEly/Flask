@@ -81,6 +81,10 @@
         <input type="checkbox" name="reduce_motion" {{ 'checked' if (user.preferences or {}).get('reduce_motion') }}>
         <span>减少动画效果</span>
       </label>
+      <label class="settings-checkbox">
+        <input type="checkbox" name="particles_enabled" {{ 'checked' if (user.preferences or {}).get('particles_enabled', True) }}>
+        <span>鼠标粒子尾迹</span>
+      </label>
     </section>
 
     <!-- 看板娘设置 -->

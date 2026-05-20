@@ -126,16 +126,16 @@
     panel.className = 'mascot-panel';
     panel.innerHTML =
       '<h4>看板娘设置</h4>' +
-      '<label><input type="checkbox" id="mascotVisible" checked> 显示看板娘</label>' +
-      '<label><input type="checkbox" id="mascotSpeech" checked> 气泡消息</label>' +
-      '<label>气泡间隔: <input type="range" id="mascotSpeechFreq" min="5" max="30" value="10"> <span id="mascotFreqLabel">10s</span></label>' +
-      '<label><input type="checkbox" id="mascotIdleAnim" checked> 待机动画</label>' +
+      '<label><input type="checkbox" id="mpVisible" checked> 显示看板娘</label>' +
+      '<label><input type="checkbox" id="mpSpeech" checked> 气泡消息</label>' +
+      '<label>气泡间隔: <input type="range" id="mpSpeechFreq" min="5" max="30" value="10"> <span id="mpFreqLabel">10s</span></label>' +
+      '<label><input type="checkbox" id="mpIdleAnim" checked> 待机动画</label>' +
       '<hr>' +
       '<label style="display:block;margin-bottom:4px;">自定义角色图片:</label>' +
-      '<input type="file" id="mascotImageInput" accept="image/png,image/gif,image/webp" style="margin-bottom:4px;">' +
-      '<button id="mascotResetImage" class="btn btn-outline btn-sm" style="margin-top:4px;width:100%;">恢复默认角色</button>' +
+      '<input type="file" id="mpImageInput" accept="image/png,image/gif,image/webp" style="margin-bottom:4px;">' +
+      '<button id="mpResetImage" class="btn btn-outline btn-sm" style="margin-top:4px;width:100%;">恢复默认角色</button>' +
       '<hr>' +
-      '<button id="mascotSaveSettings" class="btn btn-primary btn-sm" style="width:100%;">保存设置</button>';
+      '<button id="mpSaveSettings" class="btn btn-primary btn-sm" style="width:100%;">保存设置</button>';
     el.appendChild(panel);
 
     // Apply custom image if set
@@ -220,14 +220,14 @@
       e.stopPropagation();
     });
 
-    var visibleCb = document.getElementById('mascotVisible');
-    var speechCb = document.getElementById('mascotSpeech');
-    var freqSlider = document.getElementById('mascotSpeechFreq');
-    var freqLabel = document.getElementById('mascotFreqLabel');
-    var idleCb = document.getElementById('mascotIdleAnim');
-    var imageInput = document.getElementById('mascotImageInput');
-    var resetBtn = document.getElementById('mascotResetImage');
-    var saveBtn = document.getElementById('mascotSaveSettings');
+    var visibleCb = document.getElementById('mpVisible');
+    var speechCb = document.getElementById('mpSpeech');
+    var freqSlider = document.getElementById('mpSpeechFreq');
+    var freqLabel = document.getElementById('mpFreqLabel');
+    var idleCb = document.getElementById('mpIdleAnim');
+    var imageInput = document.getElementById('mpImageInput');
+    var resetBtn = document.getElementById('mpResetImage');
+    var saveBtn = document.getElementById('mpSaveSettings');
 
     freqSlider.addEventListener('input', function () {
       if (freqLabel) freqLabel.textContent = freqSlider.value + 's';
@@ -293,12 +293,12 @@
 
   function applySettings() {
     el.style.display = settings.visible ? '' : 'none';
-    document.getElementById('mascotVisible').checked = settings.visible;
-    document.getElementById('mascotSpeech').checked = settings.speechEnabled;
-    document.getElementById('mascotSpeechFreq').value = settings.speechFreqMin;
-    var freqLabel = document.getElementById('mascotFreqLabel');
+    document.getElementById('mpVisible').checked = settings.visible;
+    document.getElementById('mpSpeech').checked = settings.speechEnabled;
+    document.getElementById('mpSpeechFreq').value = settings.speechFreqMin;
+    var freqLabel = document.getElementById('mpFreqLabel');
     if (freqLabel) freqLabel.textContent = settings.speechFreqMin + 's';
-    document.getElementById('mascotIdleAnim').checked = settings.idleAnim;
+    document.getElementById('mpIdleAnim').checked = settings.idleAnim;
 
     if (!settings.speechEnabled) {
       clearTimeout(bubbleTimer);

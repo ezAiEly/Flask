@@ -43,7 +43,7 @@ def profile():
         .order_by(Video.created_at.desc()).all()
     total_views = sum(v.views for v in user_videos)
     return render_template('profile.html',
-        user=user, user_videos=user_videos, total_views=total_views)
+        user_videos=user_videos, total_views=total_views)
 
 
 @main_bp.route('/choose-avatar')
@@ -178,7 +178,7 @@ def my_feed():
     has_more = len(feeds) > per_page
     feeds = feeds[:per_page]
 
-    return render_template('my_feed.html', feeds=feeds, page=page, has_more=has_more, total=total)
+    return render_template('my_feed.html', feeds=feeds, page=page, has_more=has_more)
 
 
 @main_bp.route('/api/feed')
@@ -252,6 +252,7 @@ def settings():
         prefs['mascot_idle_anim'] = request.form.get('mascot_idle_anim') == 'on'
         prefs['font_size'] = request.form.get('font_size', 'medium')
         prefs['reduce_motion'] = request.form.get('reduce_motion') == 'on'
+        prefs['particles_enabled'] = request.form.get('particles_enabled') == 'on'
         user.preferences = prefs
         db.session.commit()
         flash('设置已保存', 'success')

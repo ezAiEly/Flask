@@ -38,7 +38,7 @@
     </a>
   </div>
 
-  <form class="header-search" action="/search" method="GET" role="search" aria-label="搜索视频">
+  <form class="header-search" action="{{ url_for('video.search') }}" method="GET" role="search" aria-label="搜索视频">
     <label for="searchInput" class="sr-only">搜索视频</label>
     <input type="search" id="searchInput" name="q" class="search-input" placeholder="搜索视频…" autocomplete="off">
     <button type="submit" class="search-btn" aria-label="搜索"><i class="fas fa-search"></i></button>
@@ -172,17 +172,18 @@
     btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
-  window.onclick = function(event) {
+  window.addEventListener('click', function(event) {
     if (!event.target.matches('.avatar') && !event.target.closest('.avatar')) {
       var dropdowns = document.getElementsByClassName("dropdown-content");
       for (var i = 0; i < dropdowns.length; i++) {
         if (dropdowns[i].classList.contains('show')) {
           dropdowns[i].classList.remove('show');
-          document.querySelector('.avatar').setAttribute('aria-expanded', 'false');
+          var avatarBtn = document.querySelector('.avatar');
+          if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
         }
       }
     }
-  }
+  });
 
   // ── Toast (backed by Notyf) ─────────────────────────
   var notyf = new Notyf({
@@ -303,6 +304,9 @@
       if (prefs.reduce_motion) {
         document.documentElement.classList.add('reduce-motion');
       }
+      if (typeof prefs.particles_enabled === 'boolean' && window.toggleParticles) {
+        window.toggleParticles(prefs.particles_enabled);
+      }
       if (prefs.sidebar_default === 'collapsed' && localStorage.getItem('sidebar-collapsed') === null) {
         localStorage.setItem('sidebar-collapsed', 'true');
       }
@@ -355,6 +359,7 @@
   };
 </script>
 {% endif %}
+<script src="{{ url_for('static', filename='js/particles.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mascot.js') }}"></script>
 
 <!-- Micromodal: confirmation dialog -->
