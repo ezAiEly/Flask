@@ -326,92 +326,18 @@
 </script>
 
 <!-- Live2D Widget -->
-<style>
-  /* Position: right side (default is left) */
-  #waifu {
-    left: auto !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 998 !important;
-  }
-  #waifu-tool {
-    right: 6px !important;
-    left: auto !important;
-  }
-  /* Hide default close button — we provide our own toggle */
-  #waifu-tool .fui-cross {
-    display: none !important;
-  }
-</style>
-
-<!-- Summon button (visible when widget is hidden) -->
-<button class="live2d-summon" id="live2dSummon" aria-label="召唤看板娘" title="召唤看板娘" style="display:none;">
-  <i class="fas fa-cat"></i>
-</button>
-
-<script src="https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js"></script>
-
+{% if not current_user or (current_user.preferences or {}).get('mascot_visible', True) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='live2d/waifu.css') }}">
+<script src="{{ url_for('static', filename='live2d/live2d.min.js') }}"></script>
+<script src="{{ url_for('static', filename='live2d/waifu-tips.js') }}"></script>
 <script>
-  (function() {
-    var HIDDEN_KEY = 'live2d_hidden';
-
-    {% if current_user and current_user.preferences %}
-    var serverPrefs = {{ current_user.preferences | tojson }};
-    if (serverPrefs.mascot_visible === false) {
-      localStorage.setItem(HIDDEN_KEY, '1');
-    }
-    {% endif %}
-
-    var summonBtn = document.getElementById('live2dSummon');
-    var hidden = localStorage.getItem(HIDDEN_KEY) === '1';
-
-    function show() {
-      var waifu = document.getElementById('waifu');
-      if (waifu) { waifu.style.display = ''; summonBtn.style.display = 'none'; }
-      localStorage.removeItem(HIDDEN_KEY);
-    }
-
-    function hide() {
-      var waifu = document.getElementById('waifu');
-      if (waifu) { waifu.style.display = 'none'; summonBtn.style.display = ''; }
-      localStorage.setItem(HIDDEN_KEY, '1');
-    }
-
-    summonBtn.addEventListener('click', show);
-
-    // Poll for widget ready, then apply state + patch close button
-    var tries = 0;
-    var poll = setInterval(function() {
-      var waifu = document.getElementById('waifu');
-      if (!waifu && tries < 40) { tries++; return; }
-      clearInterval(poll);
-      if (!waifu) return;
-
-      // Apply saved state
-      if (hidden) {
-        waifu.style.display = 'none';
-        summonBtn.style.display = '';
-      } else {
-        summonBtn.style.display = 'none';
-      }
-
-      // Replace built-in quit button behavior with toggle
-      var tool = document.getElementById('waifu-tool');
-      if (tool) {
-        var cross = tool.querySelector('.fui-cross');
-        if (cross) {
-          cross.style.display = '';
-          var clone = cross.cloneNode(true);
-          cross.parentNode.replaceChild(clone, cross);
-          clone.addEventListener('click', function(e) {
-            e.stopPropagation();
-            hide();
-          });
-        }
-      }
-    }, 300);
-  })();
+  initWidget({
+    waifuPath: "{{ url_for('static', filename='live2d/waifu-tips.json') }}",
+    cdnPath: "https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/",
+    tools: ["hitokoto", "asteroids", "switch-model", "switch-texture", "photo", "info", "quit"]
+  });
 </script>
+{% endif %}
 
 <!-- Micromodal: confirmation dialog -->
 <div class="modal micromodal-slide" id="confirmModal" aria-hidden="true">
