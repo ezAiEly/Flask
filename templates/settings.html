@@ -39,6 +39,27 @@
       </div>
     </section>
 
+    <!-- 主题模式 -->
+    <section class="settings-section">
+      <h2><i class="fas fa-moon"></i> 主题模式</h2>
+      <p class="text-muted" style="margin-bottom:0.75rem;">选择深色/浅色模式或跟随系统。</p>
+      <div class="settings-radio-group" id="themeModeGroup">
+        {% set tm = (user.preferences or {}).get('theme_mode', 'system') %}
+        <label>
+          <input type="radio" name="theme_mode" value="light" {{ 'checked' if tm == 'light' }}>
+          <span><i class="fas fa-sun"></i> 浅色</span>
+        </label>
+        <label>
+          <input type="radio" name="theme_mode" value="dark" {{ 'checked' if tm == 'dark' }}>
+          <span><i class="fas fa-moon"></i> 深色</span>
+        </label>
+        <label>
+          <input type="radio" name="theme_mode" value="system" {{ 'checked' if tm == 'system' }}>
+          <span><i class="fas fa-desktop"></i> 跟随系统</span>
+        </label>
+      </div>
+    </section>
+
     <!-- 布局与显示 -->
     <section class="settings-section">
       <h2><i class="fas fa-columns"></i> 布局与显示</h2>
@@ -81,10 +102,8 @@
         <input type="checkbox" name="reduce_motion" {{ 'checked' if (user.preferences or {}).get('reduce_motion') }}>
         <span>减少动画效果</span>
       </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="particles_enabled" {{ 'checked' if (user.preferences or {}).get('particles_enabled', True) }}>
-        <span>鼠标粒子尾迹</span>
-      </label>
+
+
     </section>
 
     <!-- 看板娘设置 -->
@@ -93,23 +112,9 @@
       {% set p = user.preferences or {} %}
       <label class="settings-checkbox">
         <input type="checkbox" name="mascot_visible" {{ 'checked' if p.get('mascot_visible', True) }}>
-        <span>显示看板娘</span>
+        <span>显示 Live2D 看板娘</span>
       </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="mascot_speech" {{ 'checked' if p.get('mascot_speech', True) }}>
-        <span>显示气泡消息</span>
-      </label>
-      <div class="settings-range">
-        <label for="mascotSpeechFreq">气泡间隔: <span id="freqLabel">{{ p.get('mascot_speech_freq', 10) }}秒</span></label>
-        <input type="range" id="mascotSpeechFreq" name="mascot_speech_freq" min="5" max="30"
-               value="{{ p.get('mascot_speech_freq', 10) }}"
-               oninput="document.getElementById('freqLabel').textContent = this.value + '秒'">
-      </div>
-      <label class="settings-checkbox">
-        <input type="checkbox" name="mascot_idle_anim" {{ 'checked' if p.get('mascot_idle_anim', True) }}>
-        <span>待机浮动动画</span>
-      </label>
-      <p class="text-muted" style="font-size:0.75rem;margin-top:8px;">提示：看板娘的位置和其他即时设置可直接拖拽看板娘并点击齿轮图标调整。</p>
+      <p class="text-muted" style="font-size:0.75rem;margin-top:8px;">提示：看板娘支持拖拽和点击互动，右下角可切换模型。</p>
     </section>
 
     <button type="submit" class="btn btn-primary">
@@ -126,7 +131,6 @@
 
   function applyColor(color) {
     document.documentElement.style.setProperty('--primary-color', color);
-    // Lighten for hover
     var r = parseInt(color.slice(1,3), 16);
     var g = parseInt(color.slice(3,5), 16);
     var b = parseInt(color.slice(5,7), 16);
@@ -141,7 +145,6 @@
   presets.forEach(function(btn) {
     btn.addEventListener('click', function() {
       applyColor(this.dataset.color);
-      // Update checkmarks
       presets.forEach(function(b) { b.innerHTML = ''; });
       this.innerHTML = '<i class="fas fa-check"></i>';
     });
@@ -150,6 +153,19 @@
   customPicker.addEventListener('input', function() {
     applyColor(this.value);
     presets.forEach(function(b) { b.innerHTML = ''; });
+  });
+
+  // Live theme mode preview
+  var themeRadios = document.querySelectorAll('input[name="theme_mode"]');
+  themeRadios.forEach(function(r) {
+    r.addEventListener('change', function() {
+      localStorage.setItem('theme', this.value);
+      if (this.value === 'dark' || (this.value === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    });
   });
 })();
 </script>

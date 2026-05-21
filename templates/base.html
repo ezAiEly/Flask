@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.css">
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
-  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -45,14 +45,7 @@
   </form>
 
   <div class="header-right">
-    <button class="theme-toggle" id="themeToggle" aria-label="切换主题" title="切换深色/浅色模式">
-      <i class="fas fa-moon" id="themeIcon"></i>
-    </button>
     {% if current_user %}
-    <a href="{{ url_for('video.upload_video') }}" class="header-upload-btn" title="投稿">
-      <i class="fas fa-cloud-upload-alt"></i>
-      <span class="upload-text">投稿</span>
-    </a>
     <div class="user-dropdown">
       <button class="avatar" onclick="toggleDropdown()" aria-expanded="false" aria-haspopup="true" aria-label="用户菜单">
         {% if current_user.avatar %}
@@ -66,6 +59,7 @@
         {% endif %}
       </button>
       <div id="dropdownMenu" class="dropdown-content" role="menu" aria-label="用户操作菜单">
+        <a href="{{ url_for('video.upload_video') }}" role="menuitem"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
         <a href="{{ url_for('main.profile') }}" role="menuitem"><i class="fas fa-user-circle"></i> 个人资料 <span class="level-badge" style="background:{{ current_user.level_color }}">Lv{{ current_user.level }}</span></a>
         <a href="{{ url_for('main.user_space', username=current_user.username) }}" role="menuitem"><i class="fas fa-home"></i> 我的空间</a>
         <a href="{{ url_for('main.history') }}" role="menuitem"><i class="fas fa-history"></i> 观看历史</a>
@@ -106,10 +100,6 @@
       <i class="fas fa-info-circle"></i>
       <span class="sidebar-label">关于</span>
     </a>
-    <a href="{{ url_for('main.contact') }}" class="sidebar-item {% if request.endpoint == 'main.contact' %}active{% endif %}" title="联系">
-      <i class="fas fa-envelope"></i>
-      <span class="sidebar-label">联系</span>
-    </a>
     <div class="sidebar-divider"></div>
     <a href="{{ url_for('game.game_index') }}" class="sidebar-item {% if request.endpoint and request.endpoint.startswith('game.') %}active{% endif %}" title="游戏中心">
       <i class="fas fa-gamepad"></i>
@@ -144,7 +134,7 @@
 
 <!-- ==================== Footer ==================== -->
 <footer id="mainFooter">
-  <p>&copy; {{ now.year }} 视频社区 &mdash; Built with Flask</p>
+  <p>&copy; {{ now.year }} 视频社区</p>
 </footer>
 
 <!-- ==================== Scroll Progress ==================== -->
@@ -161,8 +151,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.js"></script>
 <script src="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/micromodal/0.4.10/micromodal.min.js"></script>
-<script src="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
-<script src="https://cdn.bootcdn.net/ajax/libs/flatpickr/4.6.13/l10n/zh.js"></script>
 <script>
   // ── Dropdown ──────────────────────────────────────
   function toggleDropdown() {
@@ -254,15 +242,11 @@
   })();
 </script>
 
-  // ── Theme Toggle (3-state: light / dark / system) ──
+<script>
+  // ── Theme + Preferences ──
   (function() {
     var html = document.documentElement;
-    var toggle = document.getElementById('themeToggle');
-    var icon = document.getElementById('themeIcon');
     var currentTheme = localStorage.getItem('theme') || 'system';
-
-    var icons = { light: 'fa-sun', dark: 'fa-moon', system: 'fa-desktop' };
-    var labels = { light: '浅色模式', dark: '深色模式', system: '跟随系统' };
 
     function applyTheme(theme) {
       if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -270,23 +254,12 @@
       } else {
         html.removeAttribute('data-theme');
       }
-      icon.className = 'fas ' + icons[theme];
-      toggle.title = labels[theme];
     }
 
-    function cycleTheme() {
-      var order = ['light', 'dark', 'system'];
-      var idx = order.indexOf(currentTheme);
-      currentTheme = order[(idx + 1) % 3];
-      localStorage.setItem('theme', currentTheme);
-      applyTheme(currentTheme);
-    }
-
-    // Initial apply
+    // Initial apply (FOUC script in <head> already did this, but sync in case of drift)
     applyTheme(currentTheme);
 
     {% if current_user and current_user.preferences %}
-    // Apply saved preferences
     (function() {
       var prefs = {{ current_user.preferences | tojson }};
       if (prefs.accent_color) {
@@ -304,8 +277,11 @@
       if (prefs.reduce_motion) {
         document.documentElement.classList.add('reduce-motion');
       }
-      if (typeof prefs.particles_enabled === 'boolean' && window.toggleParticles) {
-        window.toggleParticles(prefs.particles_enabled);
+      // Theme mode from server preference (wins over localStorage if set)
+      if (prefs.theme_mode && prefs.theme_mode !== localStorage.getItem('theme')) {
+        localStorage.setItem('theme', prefs.theme_mode);
+        currentTheme = prefs.theme_mode;
+        applyTheme(currentTheme);
       }
       if (prefs.sidebar_default === 'collapsed' && localStorage.getItem('sidebar-collapsed') === null) {
         localStorage.setItem('sidebar-collapsed', 'true');
@@ -313,12 +289,10 @@
     })();
     {% endif %}
 
-    // Enable transitions after load
+    // Enable transitions after page load
     setTimeout(function() { html.classList.add('theme-ready'); }, 100);
 
-    toggle.addEventListener('click', cycleTheme);
-
-    // Listen for system theme changes (only matters in system mode)
+    // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
       if (currentTheme === 'system') applyTheme('system');
     });
@@ -351,16 +325,93 @@
   })();
 </script>
 
-{% if current_user %}
+<!-- Live2D Widget -->
+<style>
+  /* Position: right side (default is left) */
+  #waifu {
+    left: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 998 !important;
+  }
+  #waifu-tool {
+    right: 6px !important;
+    left: auto !important;
+  }
+  /* Hide default close button — we provide our own toggle */
+  #waifu-tool .fui-cross {
+    display: none !important;
+  }
+</style>
+
+<!-- Summon button (visible when widget is hidden) -->
+<button class="live2d-summon" id="live2dSummon" aria-label="召唤看板娘" title="召唤看板娘" style="display:none;">
+  <i class="fas fa-cat"></i>
+</button>
+
+<script src="https://fastly.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js"></script>
+
 <script>
-  window.__MASCOT_CONFIG__ = {
-    mascotImage: {{ (current_user.mascot_image or '') | tojson }},
-    preferences: {{ (current_user.preferences or {}) | tojson }}
-  };
+  (function() {
+    var HIDDEN_KEY = 'live2d_hidden';
+
+    {% if current_user and current_user.preferences %}
+    var serverPrefs = {{ current_user.preferences | tojson }};
+    if (serverPrefs.mascot_visible === false) {
+      localStorage.setItem(HIDDEN_KEY, '1');
+    }
+    {% endif %}
+
+    var summonBtn = document.getElementById('live2dSummon');
+    var hidden = localStorage.getItem(HIDDEN_KEY) === '1';
+
+    function show() {
+      var waifu = document.getElementById('waifu');
+      if (waifu) { waifu.style.display = ''; summonBtn.style.display = 'none'; }
+      localStorage.removeItem(HIDDEN_KEY);
+    }
+
+    function hide() {
+      var waifu = document.getElementById('waifu');
+      if (waifu) { waifu.style.display = 'none'; summonBtn.style.display = ''; }
+      localStorage.setItem(HIDDEN_KEY, '1');
+    }
+
+    summonBtn.addEventListener('click', show);
+
+    // Poll for widget ready, then apply state + patch close button
+    var tries = 0;
+    var poll = setInterval(function() {
+      var waifu = document.getElementById('waifu');
+      if (!waifu && tries < 40) { tries++; return; }
+      clearInterval(poll);
+      if (!waifu) return;
+
+      // Apply saved state
+      if (hidden) {
+        waifu.style.display = 'none';
+        summonBtn.style.display = '';
+      } else {
+        summonBtn.style.display = 'none';
+      }
+
+      // Replace built-in quit button behavior with toggle
+      var tool = document.getElementById('waifu-tool');
+      if (tool) {
+        var cross = tool.querySelector('.fui-cross');
+        if (cross) {
+          cross.style.display = '';
+          var clone = cross.cloneNode(true);
+          cross.parentNode.replaceChild(clone, cross);
+          clone.addEventListener('click', function(e) {
+            e.stopPropagation();
+            hide();
+          });
+        }
+      }
+    }, 300);
+  })();
 </script>
-{% endif %}
-<script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-<script src="{{ url_for('static', filename='js/mascot.js') }}"></script>
 
 <!-- Micromodal: confirmation dialog -->
 <div class="modal micromodal-slide" id="confirmModal" aria-hidden="true">

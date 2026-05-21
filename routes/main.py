@@ -247,12 +247,9 @@ def settings():
         prefs['accent_color'] = request.form.get('accent_color', '#00a1d6')
         prefs['sidebar_default'] = request.form.get('sidebar_default', 'expanded')
         prefs['mascot_visible'] = request.form.get('mascot_visible') == 'on'
-        prefs['mascot_speech'] = request.form.get('mascot_speech') == 'on'
-        prefs['mascot_speech_freq'] = int(request.form.get('mascot_speech_freq', 10))
-        prefs['mascot_idle_anim'] = request.form.get('mascot_idle_anim') == 'on'
         prefs['font_size'] = request.form.get('font_size', 'medium')
         prefs['reduce_motion'] = request.form.get('reduce_motion') == 'on'
-        prefs['particles_enabled'] = request.form.get('particles_enabled') == 'on'
+        prefs['theme_mode'] = request.form.get('theme_mode', 'system')
         user.preferences = prefs
         db.session.commit()
         flash('设置已保存', 'success')
