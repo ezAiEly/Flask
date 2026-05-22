@@ -323,6 +323,11 @@ def stats_overview():
     })
 
 
+@main_bp.route('/gateway-demo')
+def gateway_demo():
+    return render_template('gateway.html')
+
+
 @main_bp.route('/routes')
 def list_routes():
     import urllib.parse

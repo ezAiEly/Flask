@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}QR Code Generator{% endblock %}
+{% block content %}
+<div class="form-container" style="max-width:600px;">
+  <h1><i class="fas fa-qrcode"></i> QR Code Generator</h1>
+  <p class="text-muted">Input text or URL, generate a QR code instantly. Optionally add a center logo.</p>
+
+  <div class="form-group">
+    <label for="qrText">Text / URL *</label>
+    <input type="text" id="qrText" placeholder="https://example.com or any text" maxlength="500">
+  </div>
+
+  <div class="form-group">
+    <label>Style</label>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="radio" name="style" value="square" checked> Square
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="radio" name="style" value="gapped"> Gapped
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="radio" name="style" value="rounded"> Rounded
+      </label>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <input type="checkbox" id="qrLogo"> Add center logo (avatar)
+    </label>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="form-group" style="flex:1;min-width:100px;">
+      <label for="qrFg">Foreground</label>
+      <input type="color" id="qrFg" value="#000000" style="width:100%;height:36px;">
+    </div>
+    <div class="form-group" style="flex:1;min-width:100px;">
+      <label for="qrBg">Background</label>
+      <input type="color" id="qrBg" value="#FFFFFF" style="width:100%;height:36px;">
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="generateBtn" style="width:100%;">
+    <i class="fas fa-magic"></i> Generate QR Code
+  </button>
+
+  <div id="qrResult" class="hidden" style="text-align:center;margin-top:20px;">
+    <img id="qrImage" src="" alt="QR Code" style="max-width:300px;border:1px solid var(--border-color);border-radius:8px;">
+    <p style="margin-top:8px;">
+      <a id="qrDownload" href="#" download="qrcode.png" class="btn btn-outline btn-sm">
+        <i class="fas fa-download"></i> Download PNG
+      </a>
+    </p>
+    <p class="text-muted" style="font-size:0.8rem;">Generated server-side - your data never leaves the backend</p>
+  </div>
+</div>
+
+<script>
+document.getElementById('generateBtn').addEventListener('click', function() {
+  var text = document.getElementById('qrText').value.trim();
+  if (!text) { showToast('Please enter text or URL', 'error'); return; }
+
+  var style = document.querySelector('input[name="style"]:checked').value;
+  var logo = document.getElementById('qrLogo').checked;
+  var fg = document.getElementById('qrFg').value.replace('#', '');
+  var bg = document.getElementById('qrBg').value.replace('#', '');
+
+  var params = 'text=' + encodeURIComponent(text)
+    + '&style=' + style
+    + '&logo=' + logo
+    + '&fg=%23' + fg
+    + '&bg=%23' + bg;
+
+  var url = '/api/qrcode?' + params;
+
+  document.getElementById('qrImage').src = url;
+  document.getElementById('qrDownload').href = url;
+  document.getElementById('qrResult').classList.remove('hidden');
+});
+
+document.getElementById('qrText').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('generateBtn').click();
+});
+</script>
+{% endblock %}

@@ -7,6 +7,7 @@ from routes.notifications import notif_bp
 from routes.playlists import playlist_bp
 from routes.admin import admin_bp
 from routes.third_party import third_bp
+from routes.qrcode import qrcode_bp
 
 
 def register_blueprints(app):
@@ -19,3 +20,4 @@ def register_blueprints(app):
     app.register_blueprint(playlist_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(third_bp)
+    app.register_blueprint(qrcode_bp)

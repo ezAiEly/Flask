@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}API Gateway Demo{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:0 auto;">
+  <h1><i class="fas fa-server"></i> API Gateway Demo - Microservice Architecture</h1>
+  <p class="text-muted">
+    This page calls <strong>two different backend services</strong> simultaneously.
+    Open your browser's <strong>Network tab</strong> to see requests going to different ports.
+  </p>
+
+  <div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;background:#e8f5e9;padding:12px;border-radius:8px;text-align:center;">
+      <strong style="color:#2e7d32;">Port 8001</strong>
+      <p style="margin:4px 0;font-size:0.85rem;">Main App (Videos, Comments)</p>
+      <span id="status8001" style="font-size:0.8rem;color:#999;">pending...</span>
+    </div>
+    <div style="flex:1;min-width:200px;background:#e3f2fd;padding:12px;border-radius:8px;text-align:center;">
+      <strong style="color:#1565c0;">Port 8002</strong>
+      <p style="margin:4px 0;font-size:0.85rem;">User Profile & Order Service</p>
+      <span id="status8002" style="font-size:0.8rem;color:#999;">pending...</span>
+    </div>
+    <div style="flex:1;min-width:200px;background:#fff3e0;padding:12px;border-radius:8px;text-align:center;">
+      <strong style="color:#e65100;">Port 8002</strong>
+      <p style="margin:4px 0;font-size:0.85rem;">Stats Service</p>
+      <span id="statusStats" style="font-size:0.8rem;color:#999;">pending...</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;">
+    <label for="userId">Select User ID:</label>
+    <select id="userId" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border-color);">
+      <option value="1">1 - Alice</option>
+      <option value="2">2 - Bob</option>
+      <option value="3">3 - Charlie</option>
+    </select>
+    <button id="fetchBtn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Fetch All Services</button>
+  </div>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:280px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;">
+      <h3><i class="fas fa-video"></i> Service 1 (Port 8001)</h3>
+      <p style="font-size:0.8rem;color:var(--text-muted);">Main App - Video Community API</p>
+      <pre id="result8001" style="background:var(--bg-color);padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;max-height:200px;overflow-y:auto;">Click "Fetch All Services"</pre>
+    </div>
+    <div style="flex:1;min-width:280px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;">
+      <h3><i class="fas fa-user-circle"></i> Service 2 (Port 8002)</h3>
+      <p style="font-size:0.8rem;color:var(--text-muted);">User Profile + Orders</p>
+      <pre id="result8002" style="background:var(--bg-color);padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;max-height:200px;overflow-y:auto;">Click "Fetch All Services"</pre>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;">
+    <h3><i class="fas fa-chart-bar"></i> Stats (Port 8002) + Merged View</h3>
+    <pre id="resultMerged" style="background:var(--bg-color);padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;max-height:200px;overflow-y:auto;">Click "Fetch All Services"</pre>
+  </div>
+</div>
+
+<script>
+document.getElementById('fetchBtn').addEventListener('click', function() {
+  var userId = document.getElementById('userId').value;
+  document.getElementById('result8001').textContent = 'Loading...';
+  document.getElementById('result8002').textContent = 'Loading...';
+  document.getElementById('resultMerged').textContent = 'Loading...';
+  document.getElementById('status8001').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> loading...';
+  document.getElementById('status8002').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> loading...';
+  document.getElementById('statusStats').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> loading...';
+
+  // Fire all 3 requests simultaneously (demonstrates concurrent API calls)
+  var startTime = Date.now();
+
+  var p1 = fetch('/api/videos/hot?page=1&limit=2')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('result8001').textContent = JSON.stringify(d, null, 2);
+      document.getElementById('status8001').innerHTML = '<span style="color:#2e7d32;">OK (' + (Date.now() - startTime) + 'ms)</span>';
+      return d;
+    });
+
+  var p2 = fetch('http://127.0.0.1:8002/api/v2/user/' + userId + '/orders')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('result8002').textContent = JSON.stringify(d, null, 2);
+      document.getElementById('status8002').innerHTML = '<span style="color:#1565c0;">OK (' + (Date.now() - startTime) + 'ms)</span>';
+      return d;
+    });
+
+  var p3 = fetch('http://127.0.0.1:8002/api/v2/stats')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('statusStats').innerHTML = '<span style="color:#e65100;">OK (' + (Date.now() - startTime) + 'ms)</span>';
+      return d;
+    })
+    .catch(function() {
+      document.getElementById('statusStats').innerHTML = '<span style="color:red;">OFFLINE</span>';
+      return { error: 'Service 2 not running on port 8002' };
+    });
+
+  // Wait for all and merge results
+  Promise.all([p1, p2, p3]).then(function(results) {
+    var merged = {
+      gateway: 'api-gateway-merging-data',
+      sources: [
+        { port: 8001, service: 'video-community', data: results[0] },
+        { port: 8002, service: 'user-order-service', data: results[1] },
+        { port: 8002, service: 'stats-service', data: results[2] }
+      ],
+      merged_at: new Date().toISOString(),
+      total_ms: Date.now() - startTime
+    };
+    document.getElementById('resultMerged').textContent = JSON.stringify(merged, null, 2);
+  }).catch(function(e) {
+    document.getElementById('resultMerged').textContent = 'Error: ' + e.message;
+  });
+});
+</script>
+{% endblock %}
