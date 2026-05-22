@@ -1,188 +1,238 @@
-# 视频社区网站
+# Video Community Platform
 
-类 B 站风格的视频社区，基于 Flask + SQLite + SocketIO，支持弹幕、游戏中心、看板娘等。
+A Bilibili-style video community platform built with Flask + SQLAlchemy + SocketIO. Features real-time danmaku, game center, Live2D mascot, SSR templates, and comprehensive Web API demos.
 
-## 快速开始
+## Quick Start
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env              # 编辑 .env 修改 SECRET_KEY 和 JWT_SECRET_KEY
+cp .env.example .env              # Edit SECRET_KEY and JWT_SECRET_KEY
 python app.py
 ```
 
-访问 http://127.0.0.1:5000
+Visit **http://127.0.0.1:5000**
 
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 后端框架 | Flask 3.x + Jinja2 服务端渲染 |
-| 数据库 | SQLite + SQLAlchemy + Flask-Migrate |
-| 认证 | Session + JWT (Flask-JWT-Extended) |
-| 实时通信 | Flask-SocketIO |
-| CSRF 防护 | Flask-WTF |
-| 图片处理 | Pillow（验证 + 缩略图） |
-| 视频播放 | video.js 8.10 |
-| 弹幕渲染 | Canvas API 自定义引擎 |
-| 轮播图 | Swiper.js 11 |
-| 弹窗 | Micromodal.js |
-| 通知 | Notyf 3 |
-| 日期选择 | flatpickr 4 + 中文 locale |
-| 图标 | Font Awesome 6.7 |
-| 前端 | 原生 JavaScript（IIFE 模式） + CSS Variables |
-| 测试 | pytest |
-
-## 项目结构
-
-```
-├── app.py                    # 应用工厂 create_app()
-├── config.py                 # 配置类 + .env 加载
-├── models.py                 # 数据模型（10 表 + 推荐引擎）
-├── events.py                 # SocketIO 事件（弹幕实时推送）
-├── requirements.txt
-├── .env.example
-├── routes/
-│   ├── __init__.py           # 注册所有 Blueprint
-│   ├── auth.py               # 注册 / 登录 / 登出
-│   ├── main.py               # 首页 / 关于 / 联系 / 个人资料 / 头像 / 用户空间 / 动态 / 历史 / 设置
-│   ├── video.py              # 视频 CRUD / 搜索 / 分类 / 弹幕 API / 评论 API / 互动 API
-│   ├── social.py             # 关注 / 取关
-│   └── games.py              # 游戏中心 / 游戏播放 / 分类浏览
-├── tests/
-│   ├── conftest.py           # pytest fixtures
-│   └── test_routes.py        # 10 个冒烟测试
-├── migrations/               # Flask-Migrate 迁移
-├── static/
-│   ├── css/
-│   │   └── style.css         # 完整主题系统（CSS Variables + 深色模式）
-│   ├── js/
-│   │   ├── danmaku.js        # Canvas 弹幕引擎
-│   │   ├── interaction.js    # 互动栏（点赞/投币/收藏/分享）
-│   │   ├── home.js           # 首页 Tab + 轮播图 + 无限分页
-│   │   ├── mascot.js         # 看板娘（拖拽/跟随/气泡/自定义导入）
-│   │   └── particles.js      # 鼠标粒子尾迹
-│   ├── games/                # 小游戏（2048 / 贪吃蛇 / 俄罗斯方块）
-│   ├── avatars/              # 用户头像
-│   ├── images/               # 系统图片库
-│   ├── mascots/              # 自定义看板娘图片
-│   └── videos/               # 视频文件（不纳入版本控制）
-└── templates/
-    ├── base.html             # 基础布局（导航栏 + 侧边栏 + 页脚）
-    ├── index.html            # 首页（轮播图 + 推荐/热门 Tab）
-    ├── video.html            # 播放页（弹幕 + 互动栏 + 评论区）
-    ├── search.html           # 搜索结果
-    ├── category.html         # 分类浏览
-    ├── user_space.html       # 用户空间
-    ├── upload_video.html     # 视频投稿
-    ├── profile.html          # 个人资料 + 改密
-    ├── settings.html         # 站点设置（强调色/字体/动画/看板娘）
-    ├── login.html / register.html
-    ├── history.html          # 观看历史
-    ├── my_feed.html          # 关注动态
-    ├── games.html            # 游戏中心
-    ├── game_play.html        # 游戏播放页
-    ├── game_category.html    # 游戏分类
-    ├── about.html / contact.html
-    ├── choose_avatar.html / upload_avatar.html
-    └── error.html            # 错误页面
-```
-
-## 功能清单
-
-### 用户系统
-- 注册 / 登录（Session + JWT 双认证，JWT 过期自动跳转）
-- 个人资料（头像上传 + 图片库选择 + 修改密码）
-- 用户等级（Lv0-Lv6，基于上传/点赞/评论/观看量自动计算）
-- 用户空间（投稿列表 + 动态时间线）
-- 关注 / 取关 + 关注动态推送
-
-### 视频系统
-- 视频上传（最大 20GB，支持 mp4/webm/mkv/avi/mov/flv）
-- 视频播放（video.js，多倍速 0.5x-2x）
-- 封面图（上传封面 + ffmpeg 自动截帧回退）
-- 标签系统（逗号分隔，个性化推荐依据）
-- 8 个分类：动画 / 音乐 / 游戏 / 知识 / 科技 / 生活 / 时尚 / 娱乐
-- 搜索（标题 + 描述模糊匹配）
-- JSON-LD 结构化数据（SEO）
-
-### 弹幕系统
-- Canvas 渲染引擎，3 种模式（滚动/顶部/底部）
-- 8 色可选，实时 WebSocket 推送
-- 自定义颜色 + 轨道碰撞避免
-
-### 评论区
-- 发表评论 + 回复（1 层嵌套）
-- 最新/最热排序，分页加载
-- 点赞切换
-
-### 互动栏
-- 点赞 / 投币 / 收藏 / 分享
-- 投币数选择弹窗
-
-### 游戏中心（10 个分类）
-- 动作 / 益智 / 射击 / 冒险 / 策略 / 休闲 / 体育 / 综合 / 棋牌 / 双人
-- 3 款自带小游戏（2048 / 贪吃蛇 / 俄罗斯方块）
-- iframe 嵌入外部游戏 + 全屏播放
-- 分类浏览 + 排序（最热/最新）
-
-### 推荐引擎
-```
-热度 = 播放量×1 + 点赞数×2 + 收藏数×3 + 硬币数×5
-```
-- `GET /api/videos/recommend` — 基于观看历史标签的个性化推荐
-- `GET /api/videos/hot` — 全站热门排行（分页）
-
-### 主题与自定义
-- 3 态主题切换（浅色/深色/跟随系统），FOUC 防闪烁
-- 强调色自定义（6 预设 + 取色器，实时预览）
-- 字体大小（小/中/大）
-- 减少动画选项
-- 侧边栏折叠状态记忆
-
-### 看板娘
-- 纯 CSS 绘制 2D 角色（可替换为自定义图片）
-- 眼睛跟随鼠标、拖拽移动、待机浮动动画
-- 随机气泡消息（频率可调）
-- 设置面板（显示/气泡/动画开关）
-- 位置自动保存
-
-### 鼠标粒子尾迹
-- Canvas 粒子系统，跟随鼠标
-- 颜色跟随强调色，渐隐消失
-- 支持开关 + 减少动画时自动禁用
-
-### 页面增强
-- 滚动进度条 + 回到顶部按钮
-- 首页视频轮播图（Swiper.js，自动播放）
-- 可访问弹窗（Micromodal，替换 confirm）
-- Toast 通知（Notyf，3 种类型）
-- 响应式布局（适配手机端）
-
-## 推荐引擎 API
-
-| 端点 | 说明 |
-|---|---|
-| `GET /api/videos/recommend?page=1&limit=12` | 个性化推荐 |
-| `GET /api/videos/hot?page=1&limit=12` | 全站热门 |
-| `GET /api/videos/search?q=关键词` | 搜索建议 |
-
-## 常用命令
+### Run the second microservice (API Gateway Demo)
 
 ```bash
-# 运行
+cd service2
+python app.py   # Starts on port 8002
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Flask 3.x + Jinja2 (SSR) |
+| Database | SQLAlchemy ORM + MySQL/SQLite + Flask-Migrate |
+| Auth | Session + JWT (Flask-JWT-Extended) |
+| Real-time | Flask-SocketIO (danmaku + live chat) |
+| Security | Flask-WTF (CSRF), Flask-Limiter (rate limiting), HMAC-SHA256 (webhooks), server-side CAPTCHA |
+| Image | Pillow (validation, watermark, compression, QR code) |
+| Video | video.js 8.10 + Canvas danmaku engine |
+| Carousel | Swiper.js 11 |
+| Charts | ECharts 5.6 |
+| Modals | Micromodal.js |
+| Toasts | Notyf 3 |
+| Icons | Font Awesome 6.7 |
+| Frontend | Vanilla JS (IIFE) + CSS Variables + Dark Mode |
+| Testing | pytest |
+
+## Project Structure
+
+```
+├── app.py                       # App factory create_app()
+├── config.py                    # Config classes + .env loading
+├── models.py                    # 19 models + recommendation engine + XP system
+├── events.py                    # SocketIO events (danmaku + live chat)
+├── extensions.py                # Flask-Limiter instance
+├── requirements.txt
+├── .env / .env.example
+├── routes/
+│   ├── __init__.py              # Register all blueprints (10 total)
+│   ├── auth.py                  # Register / Login / Logout / CAPTCHA / Password reset
+│   ├── main.py                  # Home / About / Profile / Avatar / Settings / Stats API / Gateway
+│   ├── video.py                 # Video CRUD / Search / Categories / Danmaku / Comments / Interactions
+│   ├── social.py                # Follow / Unfollow / Profile API
+│   ├── games.py                 # Game center / Play / Categories
+│   ├── notifications.py         # Notification CRUD + unread count
+│   ├── playlists.py             # Playlist CRUD + video add/remove
+│   ├── admin.py                 # Admin dashboard (user / video management)
+│   ├── third_party.py           # Weather API proxy
+│   ├── qrcode.py                # QR code generator (server-side)
+│   └── webhook.py               # Webhook receiver + HMAC verification + simulator
+├── service2/
+│   └── app.py                   # Standalone microservice on port 8002 (API Gateway demo)
+├── utils/
+│   ├── captcha_utils.py         # Server-side CAPTCHA image generation
+│   └── image_utils.py           # Watermark + compression utilities
+├── tests/
+│   ├── conftest.py              # pytest fixtures (in-memory SQLite)
+│   └── test_routes.py           # 10 smoke tests
+├── migrations/                  # Flask-Migrate (Alembic)
+├── static/
+│   ├── css/
+│   │   └── style.css            # ~3000 lines: theme system, dark mode, chat, admin, responsive
+│   ├── js/
+│   │   ├── danmaku.js           # Canvas danmaku engine (scroll/top/bottom, collision avoidance)
+│   │   ├── interaction.js       # Like / Coin / Favorite / Share bar
+│   │   ├── home.js              # Homepage tabs + carousel + infinite scroll
+│   │   └── live2d-widget.js     # Live2D Cubism 2 model loader (9 characters)
+│   ├── live2d/                  # Live2D SDK + 9 character models
+│   ├── games/                   # Embedded HTML5 games (2048 / Snake / Tetris)
+│   ├── avatars/                 # User avatars (watermarked & compressed)
+│   ├── images/                  # System image library
+│   ├── mascots/                 # Custom mascot images
+│   ├── covers/                  # Video cover thumbnails
+│   └── videos/                  # Video files (not in version control)
+└── templates/
+    ├── base.html                # Layout: navbar, sidebar (10 nav items), footer, chat widget, theme
+    ├── index.html               # Home: hero carousel, category chips, recommend/hot tabs, infinite scroll
+    ├── video.html               # Player: video.js, danmaku canvas, interaction bar, comments (nested)
+    ├── search.html / category.html
+    ├── login.html / register.html  # With CAPTCHA
+    ├── profile.html             # User stats + ECharts pie/line charts + password change
+    ├── user_space.html          # Public user space (videos + feed tabs, follow button)
+    ├── upload_video.html        # Video upload with XHR progress bar
+    ├── settings.html            # Theme, Live2D model, playback, accent color
+    ├── history.html / my_feed.html
+    ├── games.html / game_play.html / game_category.html
+    ├── qrcode.html              # QR code generator (style, color, logo options)
+    ├── gateway.html             # API Gateway demo (multi-service concurrent fetch)
+    ├── webhook.html             # Webhook dashboard (log table + simulator)
+    ├── admin/
+    │   ├── dashboard.html       # Stats, recent users, recent videos
+    │   ├── users.html           # User management (toggle admin)
+    │   └── videos.html          # Video management (delete)
+    ├── about.html / contact.html
+    ├── choose_avatar.html / upload_avatar.html
+    └── error.html
+```
+
+## Feature Checklist (Assignment Coverage)
+
+### 1. User Auth & Personalization ✅
+- Session + JWT dual authentication
+- "Welcome back, username" banner after login
+- Conditional rendering: unauthenticated users see login prompts
+- Personal data: my videos, watch history, followers, XP/level
+- Password change & reset (token-based, 1-hour expiry)
+- **Server-side CAPTCHA** on login/register forms
+- Admin role (`is_admin`): `/admin` restricted, delete buttons hidden from non-owners
+
+### 2. Dynamic Data Interaction (DB CRUD) ✅
+- Search: `/search?q=keyword` — title + description LIKE query, paginated JSON
+- Comments: permanent storage, nested replies, newest/hottest sort, like toggling
+- Pagination: all list endpoints, frontend Fetch API
+- **ECharts dashboard** on profile page: pie chart (videos by category) + line chart (daily views, 30-day)
+- **Infinite scroll** on homepage (IntersectionObserver auto-load)
+
+### 3. Real-time Data / WebSocket ✅
+- **Real-time danmaku**: Canvas engine, 3 modes, 8 colors, WebSocket broadcast via SocketIO
+- **Live chat room**: collapsible widget, SocketIO `join_chat` / `send_message`, message history (200)
+- **Real-time notifications**: push on follow/like/coin/comment/reply, unread count, mark read
+
+### 4. File Upload & Processing ✅
+- **Avatar upload**: PIL MIME validation, server-side watermark + compression
+- **Video upload**: 6 formats, 20GB max, XHR upload progress bar, ffmpeg cover extraction
+- **Video cover**: user upload + ffmpeg auto-thumbnail fallback
+
+### 5. Background Tasks & Progress ✅
+- **Upload progress bar**: XHR.upload.onprogress with percentage + file size display
+- (Celery async queue documented in `Video_Community_Feature_Guide.docx`)
+
+### 6. Third-party API Integration ✅
+- **Weather API**: backend proxy at `/api/third/weather?city=` (OpenWeatherMap, API key in .env)
+- **QR Code generator**: server-side rendering with `qrcode` library, logo/color/style options
+- (Alipay sandbox integration documented in guide)
+
+### 7. Security & Validation ✅
+- **CAPTCHA**: server-generated image on login/register, session-verified
+- **CSRF protection**: Flask-WTF on all form POSTs
+- **XSS prevention**: Jinja2 auto-escaping + JS `escapeHtml()`
+- **Rate limiting**: 300/day 60/hour global, stricter on auth endpoints
+- **Password hashing**: Werkzeug scrypt
+- **Image validation**: PIL file-header verification (prevents extension spoofing)
+- **Admin permission**: `/admin` blocked for non-admin users
+
+### 8. Server-Side Rendering (SSR) ✅
+- Jinja2 templates render full HTML on server
+- View Page Source shows actual content (username, video titles, categories) — not empty `<div id="root">`
+- JSON-LD structured data for SEO (video + game pages)
+
+### 9. Webhook / Callback ✅
+- `POST /api/webhook/<event_type>` — universal webhook receiver
+- HMAC-SHA256 signature verification (`X-Webhook-Signature` header)
+- Handlers: `payment_completed` → coins, `video_ready` → notification, `user_updated`, `comment_moderated`
+- `WebhookLog` model stores all events (valid + invalid)
+- `/webhook-dashboard`: live log table + **webhook simulator** to send test events
+
+### 10. Multi-backend / API Gateway ✅
+- Main app (Flask, port 5000/8001) + Service 2 (Flask, port 8002)
+- `/gateway-demo`: frontend fires 3 concurrent `fetch()` calls to different ports simultaneously
+- `Promise.all()` merges results — demonstrates microservice aggregation
+- Visible in browser Network tab: requests hitting different origins
+
+### 11. Admin Dashboard ✅
+- `/admin`: stats overview (users/videos/comments count)
+- User management: list, paginate, toggle admin role
+- Video management: list, paginate, delete any video
+
+### 12. Charts & Data Visualization ✅
+- ECharts pie chart: videos by category
+- ECharts line chart: daily views trend (30 days, smooth area fill)
+- Backend: `/api/stats/overview` returns aggregated JSON
+
+### 13. Live2D Mascot ✅
+- 9 Cubism 2 character models (Pio, Tia, 22, 33, Shizuku, Neptune, Noir, Murakumo)
+- Model switching, size presets, left/right position
+- Idle tip bubbles every 30s
+- Settings persistence in user preferences
+
+## API Reference
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/captcha` | GET | Generate CAPTCHA image (base64) |
+| `/api/stats/overview` | GET | User statistics for ECharts |
+| `/api/third/weather?city=` | GET | Weather proxy (OpenWeatherMap) |
+| `/api/qrcode?text=&style=&logo=&fg=&bg=` | GET | Generate QR code PNG |
+| `/api/webhook/<event_type>` | POST | Receive webhook (HMAC verified) |
+| `/api/webhook/simulate` | POST | Simulate a webhook event |
+| `/api/webhook/logs` | GET | Webhook log (JSON) |
+| `/api/notifications` | GET | User notifications (paginated) |
+| `/api/notifications/unread-count` | GET | Unread notification count |
+| `/api/playlists` | GET/POST | List / Create playlists |
+| `/api/playlists/<id>/videos` | GET/POST | List / Add playlist videos |
+| `/api/videos/recommend` | GET | Personalized recommendations |
+| `/api/videos/hot` | GET | Hot videos (popularity-ranked) |
+| `/api/video/<id>/interactions` | GET | Like/coin/fav counts + user state |
+| `/api/video/<id>/comments` | GET/POST | Comments with nested replies |
+| `/api/video/<id>/progress` | GET/POST | Watch progress save/resume |
+| `/api/video/<id>/report` | POST | Report video |
+| `/api/feed` | GET | Followed users' activity feed |
+| `/api/history/clear` | POST | Clear watch history |
+
+## Commands
+
+```bash
+# Run
 python app.py
 
-# 数据库迁移
-flask db migrate -m "描述"
+# Service 2 (for API Gateway demo)
+cd service2 && python app.py
+
+# Database migration
+flask db migrate -m "description"
 flask db upgrade
 
-# 测试
+# Tests
 python -m pytest tests/ -v
 ```
 
-## 设计主题
+## Design System
 
-| 变量 | 浅色 | 深色 |
+| Variable | Light | Dark |
 |---|---|---|
 | `--primary-color` | `#00a1d6` | `#00b8e6` |
 | `--bg-color` | `#f4f5f7` | `#0f1218` |
@@ -190,4 +240,4 @@ python -m pytest tests/ -v
 | `--text-color` | `#18191c` | `#e0e0e0` |
 | `--border-color` | `#e3e5e7` | `#2a3040` |
 
-用户可在 `/settings` 自定义强调色，偏好持久化到数据库。
+3-state theme (light/dark/system), FOUC prevention, 6 accent color presets + custom picker, font size (S/M/L), reduce-motion support. Preferences persisted per-user in database.
