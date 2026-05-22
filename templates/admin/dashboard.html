@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="admin-container">
+  <h1><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+
+  <div class="admin-stats" style="display:flex;gap:20px;margin:20px 0;flex-wrap:wrap;">
+    <div class="stat-card" style="flex:1;min-width:150px;background:var(--card-bg);padding:20px;border-radius:12px;text-align:center;border:1px solid var(--border-color);">
+      <h3 style="font-size:2rem;color:var(--primary-color);">{{ stats.users }}</h3>
+      <p>Users</p>
+    </div>
+    <div class="stat-card" style="flex:1;min-width:150px;background:var(--card-bg);padding:20px;border-radius:12px;text-align:center;border:1px solid var(--border-color);">
+      <h3 style="font-size:2rem;color:#52c41a;">{{ stats.videos }}</h3>
+      <p>Videos</p>
+    </div>
+    <div class="stat-card" style="flex:1;min-width:150px;background:var(--card-bg);padding:20px;border-radius:12px;text-align:center;border:1px solid var(--border-color);">
+      <h3 style="font-size:2rem;color:#f45a8d;">{{ stats.comments }}</h3>
+      <p>Comments</p>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:300px;">
+      <h2>Recent Users</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Admin</th></tr></thead>
+        <tbody>
+        {% for u in recent_users %}
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ 'Yes' if u.is_admin else 'No' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <a href="{{ url_for('admin.users') }}" style="margin-top:10px;display:inline-block;">View All Users</a>
+    </div>
+
+    <div style="flex:1;min-width:300px;">
+      <h2>Recent Videos</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr><th>ID</th><th>Title</th><th>Views</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for v in recent_videos %}
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td>{{ v.id }}</td>
+            <td>{{ v.title[:30] }}{% if v.title|length > 30 %}...{% endif %}</td>
+            <td>{{ v.views }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.delete_video', video_id=v.id) }}" style="display:inline;" onsubmit="return confirm('Delete this video?');">
+                <button type="submit" style="color:#f45a8d;background:none;border:none;cursor:pointer;">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <a href="{{ url_for('admin.videos') }}" style="margin-top:10px;display:inline-block;">View All Videos</a>
+    </div>
+  </div>
+
+  <div style="margin-top:30px;">
+    <a href="{{ url_for('main.index') }}">Back to Home</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Admin - Videos{% endblock %}
+{% block content %}
+<div class="admin-container">
+  <h1>Video Management</h1>
+  <a href="{{ url_for('admin.dashboard') }}">&larr; Back to Dashboard</a>
+  <table style="width:100%;border-collapse:collapse;margin-top:20px;">
+    <thead><tr><th>ID</th><th>Title</th><th>Author</th><th>Views</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for v in videos.items %}
+      <tr style="border-bottom:1px solid var(--border-color);">
+        <td>{{ v.id }}</td><td><a href="{{ url_for('video.watch', video_id=v.id) }}">{{ v.title[:40] }}{% if v.title|length > 40 %}...{% endif %}</a></td>
+        <td>{{ v.user.username if v.user else 'N/A' }}</td><td>{{ v.views }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.delete_video', video_id=v.id) }}" style="display:inline;" onsubmit="return confirm('Delete this video?');">
+            <button type="submit" style="color:#fff;background:#f45a8d;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top:20px;">
+    {% if videos.has_prev %}<a href="{{ url_for('admin.videos', page=videos.prev_num) }}">&laquo; Prev</a>{% endif %}
+    Page {{ videos.page }} of {{ videos.pages }}
+    {% if videos.has_next %}<a href="{{ url_for('admin.videos', page=videos.next_num) }}">Next &raquo;</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

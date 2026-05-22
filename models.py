@@ -2,6 +2,7 @@ import os
 import logging
 import datetime
 import subprocess
+import secrets
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -89,8 +90,12 @@ class User(db.Model):
     avatar = db.Column(db.String(200), default='images/default-avatar.GIF')
     bio = db.Column(db.String(200), default='')
     is_system = db.Column(db.Boolean, default=False)
+    xp = db.Column(db.Integer, default=0)
+    coins_balance = db.Column(db.Integer, default=0)
     preferences = db.Column(db.JSON, default=dict)
     mascot_image = db.Column(db.String(300), default='')
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     followed = db.relationship(
         'User', secondary=followers,
@@ -118,19 +123,33 @@ class User(db.Model):
 
     @property
     def level(self):
-        uploads = Video.query.filter_by(user_id=self.id).count()
-        likes = VideoLike.query.filter_by(user_id=self.id).count()
-        comments = Comment.query.filter_by(user_id=self.id).count()
-        views = db.session.query(db.func.count(VideoView.id)).filter_by(user_id=self.id).scalar() or 0
-        total = uploads + likes + comments + views
-        level = int((total ** 0.5) / 10)
-        return min(level, 6)
+        xp = self.xp or 0
+        if xp < 100: return 0
+        if xp < 300: return 1
+        if xp < 700: return 2
+        if xp < 1500: return 3
+        if xp < 3100: return 4
+        if xp < 6300: return 5
+        return 6
 
     @property
     def level_color(self):
         colors = {0: '#9499a0', 1: '#00a1d6', 2: '#52c41a', 3: '#f59e0b',
                   4: '#fa8c16', 5: '#f5222d', 6: '#722ed1'}
         return colors.get(self.level, '#9499a0')
+
+    @property
+    def xp_next(self):
+        thresholds = {0: 100, 1: 300, 2: 700, 3: 1500, 4: 3100, 5: 6300, 6: 12700}
+        return thresholds.get(self.level, 12700)
+
+    @property
+    def xp_progress(self):
+        if self.level >= 6: return 100
+        current = self.xp or 0
+        prev = {1: 100, 2: 300, 3: 700, 4: 1500, 5: 3100, 6: 6300}.get(self.level, 0)
+        needed = {0: 100, 1: 200, 2: 400, 3: 800, 4: 1600, 5: 3200, 6: 6400}.get(self.level, 100)
+        return min(100, int((current - prev) / needed * 100))
 
 
 # 标签关联表（定义在 Video 之前）
@@ -295,6 +314,129 @@ class Game(db.Model):
     @property
     def is_external(self):
         return self.embed_url.startswith('http://') or self.embed_url.startswith('https://')
+
+
+# ── 通知 ──────────────────────────────────────────────────
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    type = db.Column(db.String(20), nullable=False)
+    message = db.Column(db.String(300), nullable=False)
+    link = db.Column(db.String(300), default='')
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    actor = db.relationship('User', foreign_keys=[actor_id])
+
+
+def push_notification(user_id, actor_id, ntype, message, link=''):
+    if actor_id and user_id == actor_id:
+        return
+    existing = Notification.query.filter_by(
+        user_id=user_id, actor_id=actor_id, type=ntype,
+        is_read=False
+    ).filter(Notification.created_at >= datetime.datetime.utcnow() - datetime.timedelta(hours=1)).first()
+    if existing:
+        existing.created_at = datetime.datetime.utcnow()
+        existing.message = message
+        existing.link = link
+        return existing
+    n = Notification(user_id=user_id, actor_id=actor_id, type=ntype, message=message, link=link)
+    db.session.add(n)
+    return n
+
+
+# ── 播放列表 ──────────────────────────────────────────────
+
+class Playlist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(300), default='')
+    is_public = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    user = db.relationship('User', backref='playlists', lazy=True)
+    videos = db.relationship('PlaylistVideo', backref='playlist', lazy='dynamic',
+                             cascade='all, delete-orphan',
+                             order_by='PlaylistVideo.position')
+
+
+class PlaylistVideo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    playlist_id = db.Column(db.Integer, db.ForeignKey('playlist.id'), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    position = db.Column(db.Integer, default=0)
+    added_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('playlist_id', 'video_id', name='uq_playlist_video'),)
+
+    video = db.relationship('Video')
+
+
+# ── 观看进度 ──────────────────────────────────────────────
+
+class VideoProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
+    position = db.Column(db.Float, default=0)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_progress'),)
+
+
+# ── 举报 ──────────────────────────────────────────────────
+
+class Report(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
+    reason = db.Column(db.String(30), nullable=False)
+    description = db.Column(db.Text, default='')
+    status = db.Column(db.String(20), default='pending', index=True)
+    handled_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    video = db.relationship('Video')
+
+
+# ── 密码重置 ──────────────────────────────────────────────
+
+class PasswordResetToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User')
+
+    @classmethod
+    def create_for(cls, user):
+        token = secrets.token_urlsafe(32)
+        expires = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        reset = cls(user_id=user.id, token=token, expires_at=expires)
+        db.session.add(reset)
+        return reset
+
+
+# ── XP 奖励 ───────────────────────────────────────────────
+
+XP_UPLOAD = 30
+XP_COMMENT = 3
+XP_DANMAKU = 1
+XP_LIKE_RECEIVED = 2
+XP_COIN_RECEIVED = 5
+XP_DAILY_LOGIN = 5
+XP_VIDEO_WATCHED = 1
+
+
+def award_xp(user, amount):
+    if not user or user.is_system:
+        return
+    user.xp = (user.xp or 0) + amount
 
 
 # ── Feed 推送 ────────────────────────────────────────────

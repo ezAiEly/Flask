@@ -24,6 +24,20 @@
     <a href="{{ url_for('main.upload_avatar') }}" class="btn btn-outline btn-sm"><i class="fas fa-camera"></i> 换头像</a>
     <a href="{{ url_for('main.settings') }}" class="btn btn-outline btn-sm"><i class="fas fa-sliders-h"></i> 站点设置</a>
     <a href="{{ url_for('video.upload_video') }}" class="btn btn-primary btn-sm" style="width:auto;margin-left:8px;"><i class="fas fa-cloud-upload-alt"></i> 投稿</a>
+    <span><strong>{{ current_user.followers_ref.count() }}</strong> 粉丝</span>
+    <span><strong>{{ current_user.followed.count() }}</strong> 关注</span>
+  </div>
+</div>
+
+<!-- Stats Charts -->
+<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:1rem;">
+  <div style="flex:1;min-width:300px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;">
+    <h3 style="margin:0 0 8px;">视频分类</h3>
+    <div id="categoryPie" style="height:280px;"></div>
+  </div>
+  <div style="flex:1;min-width:300px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;">
+    <h3 style="margin:0 0 8px;">最近30天播放趋势</h3>
+    <div id="viewsLine" style="height:280px;"></div>
   </div>
 </div>
 
@@ -88,7 +102,34 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 <script>
+(function() {
+  fetch('/api/stats/overview')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) return;
+      var pie = echarts.init(document.getElementById('categoryPie'));
+      pie.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{
+          type: 'pie', radius: '65%',
+          data: data.videos_by_category,
+          emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' } }
+        }]
+      });
+      var line = echarts.init(document.getElementById('viewsLine'));
+      var dates = data.daily_views.map(function(d) { return d.date; }).reverse();
+      var counts = data.daily_views.map(function(d) { return d.count; }).reverse();
+      line.setOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45 } },
+        yAxis: { type: 'value' },
+        series: [{ type: 'line', data: counts, smooth: true, areaStyle: { opacity: 0.3 }, itemStyle: { color: '#1a56db' } }]
+      });
+      window.addEventListener('resize', function() { pie.resize(); line.resize(); });
+    });
+})();
 (function () {
   var form = document.getElementById('passwordForm');
   var btn = document.getElementById('pwBtn');

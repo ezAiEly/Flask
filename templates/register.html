@@ -24,6 +24,14 @@
             <input type="password" id="password" placeholder="至少6位密码" minlength="6" required autocomplete="new-password">
             <span class="error-text" data-for="password"></span>
         </div>
+        <div class="form-group captcha-group">
+            <label for="captcha"><i class="fas fa-shield-alt"></i> 验证码</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="text" id="captcha" placeholder="请输入验证码" maxlength="4" required autocomplete="off" style="flex:1;">
+                <img id="captchaImg" src="" alt="验证码" onclick="refreshCaptcha()" style="cursor:pointer;height:44px;border:1px solid var(--border-color);border-radius:6px;" title="点击刷新">
+            </div>
+            <span class="error-text" data-for="captcha"></span>
+        </div>
         <button type="submit" class="btn btn-primary" id="submitBtn" style="background:var(--pink-color);">
             <span class="btn-text"><i class="fas fa-user-plus"></i> 注册</span>
             <span class="spinner hidden" id="spinner"></span>
@@ -35,6 +43,15 @@
 </div>
 
 <script>
+function refreshCaptcha() {
+    fetch('/api/captcha')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('captchaImg').src = data.captcha;
+        });
+}
+refreshCaptcha();
+
 document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     var btn = document.getElementById('submitBtn');
@@ -47,7 +64,8 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     var data = {
         username: document.getElementById('username').value.trim(),
         email: document.getElementById('email').value.trim(),
-        password: document.getElementById('password').value
+        password: document.getElementById('password').value,
+        captcha: document.getElementById('captcha').value
     };
 
     if (data.password.length < 6) {

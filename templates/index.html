@@ -24,6 +24,15 @@
   <div class="swiper-button-next"></div>
 </div>
 
+<!-- Category bar -->
+<div class="category-bar">
+  {% for cat in categories %}
+  <a href="{{ url_for('video.category_page', category_name=cat) }}" class="category-chip">
+    <i class="fas {{ category_icons.get(cat, 'fa-folder') }}"></i> {{ cat }}
+  </a>
+  {% endfor %}
+</div>
+
 <div class="home-tabs">
   <button class="home-tab active" data-tab="recommend">推荐</button>
   <button class="home-tab" data-tab="hot">热门</button>
@@ -39,6 +48,8 @@
 <div class="text-center mt-2 hidden" id="loadMoreWrap">
   <button class="btn btn-outline" id="loadMoreBtn">加载更多</button>
 </div>
+
+<div id="scrollSentinel" style="height:60px;width:100%;"></div>
 
 <div class="empty-state hidden" id="emptyState">
   <i class="fas fa-video empty-state-icon"></i>

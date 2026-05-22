@@ -4,7 +4,8 @@ import datetime
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify, current_app)
 from werkzeug.utils import secure_filename
-from models import db, User, Video, Feed, VideoView, allowed_file, validate_image_mime
+from models import db, User, Video, Feed, VideoView, VideoLike, Comment, allowed_file, validate_image_mime
+from utils.image_utils import compress_image, add_watermark
 
 main_bp = Blueprint('main', __name__)
 
@@ -97,7 +98,10 @@ def upload_avatar():
 
             ext = file.filename.rsplit('.', 1)[1].lower()
             filename = f"user_{user.id}.{ext}"
-            file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            compress_image(filepath, output_path=filepath, max_size=(300, 300), quality=75)
+            add_watermark(filepath, user.username)
             user.avatar = filename
             db.session.commit()
             flash('头像上传成功', 'success')
@@ -243,13 +247,19 @@ def settings():
         return redirect(url_for('auth.login_page', next=request.path))
     user = db.session.get(User, session['user_id'])
     if request.method == 'POST':
-        prefs = user.preferences or {}
+        prefs = dict(user.preferences or {})
         prefs['accent_color'] = request.form.get('accent_color', '#00a1d6')
         prefs['sidebar_default'] = request.form.get('sidebar_default', 'expanded')
         prefs['mascot_visible'] = request.form.get('mascot_visible') == 'on'
         prefs['font_size'] = request.form.get('font_size', 'medium')
         prefs['reduce_motion'] = request.form.get('reduce_motion') == 'on'
         prefs['theme_mode'] = request.form.get('theme_mode', 'system')
+        prefs['l2d_model'] = request.form.get('l2d_model', '0')
+        prefs['l2d_size'] = request.form.get('l2d_size', 'medium')
+        prefs['l2d_position'] = request.form.get('l2d_position', 'right')
+        prefs['default_quality'] = request.form.get('default_quality', 'auto')
+        prefs['autoplay'] = request.form.get('autoplay') == 'on'
+        prefs['default_speed'] = request.form.get('default_speed', '1')
         user.preferences = prefs
         db.session.commit()
         flash('设置已保存', 'success')
@@ -290,6 +300,27 @@ def reset_mascot():
     user.mascot_image = ''
     db.session.commit()
     return jsonify({'success': True})
+
+
+@main_bp.route('/api/stats/overview')
+def stats_overview():
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    user_id = session['user_id']
+    total_views = db.session.query(db.func.sum(Video.views)).filter(Video.user_id == user_id).scalar() or 0
+    total_likes = db.session.query(db.func.count(VideoLike.id)).join(Video).filter(Video.user_id == user_id).scalar()
+    total_comments = db.session.query(db.func.count(Comment.id)).join(Video).filter(Video.user_id == user_id).scalar()
+    by_cat = db.session.query(Video.category, db.func.count(Video.id)).filter(Video.user_id == user_id).group_by(Video.category).all()
+    daily = db.session.query(
+        db.func.date(VideoView.viewed_at), db.func.count(VideoView.id)
+    ).join(Video).filter(Video.user_id == user_id).group_by(db.func.date(VideoView.viewed_at)).order_by(db.func.date(VideoView.viewed_at).desc()).limit(30).all()
+    return jsonify({
+        'total_views': total_views,
+        'total_likes': total_likes,
+        'total_comments': total_comments,
+        'videos_by_category': [{'name': cat, 'value': cnt} for cat, cnt in by_cat],
+        'daily_views': [{'date': str(d), 'count': c} for d, c in daily],
+    })
 
 
 @main_bp.route('/routes')

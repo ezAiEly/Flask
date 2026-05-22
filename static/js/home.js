@@ -60,28 +60,65 @@
 
   // ── Tab switching ────────────────────────────────────
 
+  function switchTab(name) {
+    if (name === currentTab) return;
+    tabs.forEach(function (t) {
+      t.classList.toggle('active', t.dataset.tab === name);
+    });
+    currentTab = name;
+    resetAndLoad();
+    // Update hash without scrolling
+    if (name === 'hot') {
+      history.replaceState(null, '', '#hot');
+    } else {
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
   tabs.forEach(function (tab) {
     tab.addEventListener('click', function () {
-      var name = this.dataset.tab;
-      if (name === currentTab) return;
-      tabs.forEach(function (t) { t.classList.remove('active'); });
-      this.classList.add('active');
-      currentTab = name;
-      resetAndLoad();
+      switchTab(this.dataset.tab);
     });
+  });
+
+  window.addEventListener('hashchange', function() {
+    if (window.location.hash === '#hot') {
+      switchTab('hot');
+    } else if (!window.location.hash) {
+      switchTab('recommend');
+    }
   });
 
   // ── Init ─────────────────────────────────────────────
 
+  // Check URL hash before initial load (sidebar / external links)
+  if (window.location.hash === '#hot') {
+    currentTab = 'hot';
+    tabs.forEach(function (t) {
+      t.classList.toggle('active', t.dataset.tab === 'hot');
+    });
+  }
   resetAndLoad();
 
-  // ── Load more ────────────────────────────────────────
+  // ── Infinite Scroll ──────────────────────────────────
 
   loadMoreBtn.addEventListener('click', function () {
     if (loading) return;
     currentPage++;
     fetchVideos(false);
   });
+
+  // IntersectionObserver for auto-load
+  var sentinel = document.getElementById('scrollSentinel');
+  if (sentinel) {
+    var observer = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting && hasMore && !loading) {
+        currentPage++;
+        fetchVideos(false);
+      }
+    }, { threshold: 0.1 });
+    observer.observe(sentinel);
+  }
 
   // ── Core ─────────────────────────────────────────────
 

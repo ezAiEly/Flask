@@ -21,6 +21,8 @@ class Config:
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
     VIDEO_ALLOWED_EXTENSIONS = {'mp4', 'webm', 'mkv', 'avi', 'mov', 'flv'}
 
+    WEATHER_API_KEY = os.getenv('WEATHER_API_KEY', '')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

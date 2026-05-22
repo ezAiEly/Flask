@@ -65,6 +65,9 @@
         <a href="{{ url_for('main.history') }}" role="menuitem"><i class="fas fa-history"></i> 观看历史</a>
         <a href="{{ url_for('main.upload_avatar') }}" role="menuitem"><i class="fas fa-camera"></i> 设置头像</a>
         <a href="{{ url_for('main.settings') }}" role="menuitem"><i class="fas fa-sliders-h"></i> 站点设置</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.dashboard') }}" role="menuitem"><i class="fas fa-shield-alt"></i> 管理后台</a>
+        {% endif %}
         <a href="{{ url_for('auth.logout') }}" role="menuitem" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出</a>
       </div>
     </div>
@@ -81,10 +84,6 @@
     <a href="{{ url_for('main.index') }}" class="sidebar-item {% if request.endpoint == 'main.index' %}active{% endif %}" title="首页">
       <i class="fas fa-home"></i>
       <span class="sidebar-label">首页</span>
-    </a>
-    <a href="{{ url_for('main.index') }}#hot" class="sidebar-item" title="热门" data-tab="hot">
-      <i class="fas fa-fire"></i>
-      <span class="sidebar-label">热门</span>
     </a>
     {% if current_user %}
     <a href="{{ url_for('main.my_feed') }}" class="sidebar-item {% if request.endpoint == 'main.my_feed' %}active{% endif %}" title="动态">
@@ -105,15 +104,6 @@
       <i class="fas fa-gamepad"></i>
       <span class="sidebar-label">游戏中心</span>
     </a>
-    <div class="sidebar-divider"></div>
-    {% for cat in categories %}
-    <a href="{{ url_for('video.category_page', category_name=cat) }}"
-       class="sidebar-item {% if request.endpoint == 'video.category_page' and request.view_args and request.view_args.get('category_name') == cat %}active{% endif %}"
-       title="{{ cat }}">
-      <i class="fas {{ category_icons.get(cat, 'fa-folder') }}"></i>
-      <span class="sidebar-label">{{ cat }}</span>
-    </a>
-    {% endfor %}
   </nav>
 </aside>
 
@@ -192,13 +182,13 @@
     var _fetch = window.fetch;
     window.fetch = function(url, opts) {
       return _fetch(url, opts).then(function(res) {
-        if (res.status === 401) {
+        if (res.status === 401 && url !== '/login') {
           return res.json().then(function(data) {
             var msg = (data && data.error) || '登录已过期，请重新登录';
             showToast(msg, 'error');
             localStorage.removeItem('access_token');
             setTimeout(function() {
-              window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+              window.location.href = '/auth/login-page?next=' + encodeURIComponent(window.location.pathname);
             }, 1200);
             return Promise.reject(new Error('Unauthorized'));
           }).catch(function() {
@@ -286,6 +276,16 @@
       if (prefs.sidebar_default === 'collapsed' && localStorage.getItem('sidebar-collapsed') === null) {
         localStorage.setItem('sidebar-collapsed', 'true');
       }
+      // Sync Live2D prefs from server to localStorage
+      if (prefs.l2d_model !== undefined && localStorage.getItem('l2d-model') === null) {
+        localStorage.setItem('l2d-model', prefs.l2d_model);
+      }
+      if (prefs.l2d_size && localStorage.getItem('l2d-size') === null) {
+        localStorage.setItem('l2d-size', prefs.l2d_size);
+      }
+      if (prefs.l2d_position && localStorage.getItem('l2d-position') === null) {
+        localStorage.setItem('l2d-position', prefs.l2d_position);
+      }
     })();
     {% endif %}
 
@@ -326,18 +326,26 @@
 </script>
 
 <!-- Live2D Widget -->
-{% if not current_user or (current_user.preferences or {}).get('mascot_visible', True) %}
+{% if current_user and (current_user.preferences or {}).get('mascot_visible', True) and request.endpoint == 'main.index' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='live2d/waifu.css') }}">
 <script src="{{ url_for('static', filename='live2d/live2d.min.js') }}"></script>
-<script src="{{ url_for('static', filename='live2d/waifu-tips.js') }}"></script>
-<script>
-  initWidget({
-    waifuPath: "{{ url_for('static', filename='live2d/waifu-tips.json') }}",
-    cdnPath: "https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/",
-    tools: ["hitokoto", "asteroids", "switch-model", "switch-texture", "photo", "info", "quit"]
-  });
-</script>
+<script src="{{ url_for('static', filename='js/live2d-widget.js') }}"></script>
 {% endif %}
+
+<!-- Live Chat Widget -->
+<div id="chatWidget" class="chat-collapsed">
+  <div id="chatHeader" onclick="toggleChat()">
+    <span><i class="fas fa-comments"></i> 聊天室</span>
+    <i class="fas fa-chevron-up" id="chatChevron"></i>
+  </div>
+  <div id="chatBody">
+    <div id="chatMessages"></div>
+    <div id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="输入消息..." maxlength="500" autocomplete="off">
+      <button id="chatSendBtn">发送</button>
+    </div>
+  </div>
+</div>
 
 <!-- Micromodal: confirmation dialog -->
 <div class="modal micromodal-slide" id="confirmModal" aria-hidden="true">
@@ -357,6 +365,64 @@
     </div>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+(function() {
+  var socket = io();
+  socket.emit('join_chat');
+
+  socket.on('chat_history', function(messages) {
+    messages.forEach(function(msg) { appendMessage(msg); });
+    scrollChatBottom();
+  });
+
+  socket.on('new_message', function(msg) {
+    appendMessage(msg);
+    scrollChatBottom();
+  });
+
+  function appendMessage(msg) {
+    var div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = '<strong>' + escapeHtml(msg.username) + '</strong> '
+      + '<span class="chat-time">' + escapeHtml(msg.time) + '</span>'
+      + '<p>' + escapeHtml(msg.message) + '</p>';
+    document.getElementById('chatMessages').appendChild(div);
+  }
+
+  function scrollChatBottom() {
+    var el = document.getElementById('chatMessages');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  document.getElementById('chatSendBtn').onclick = function() {
+    var input = document.getElementById('chatInput');
+    if (input.value.trim()) {
+      socket.emit('send_message', { message: input.value });
+      input.value = '';
+    }
+  };
+
+  document.getElementById('chatInput').onkeydown = function(e) {
+    if (e.key === 'Enter') document.getElementById('chatSendBtn').click();
+  };
+
+  function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+  }
+})();
+
+function toggleChat() {
+  var widget = document.getElementById('chatWidget');
+  var chevron = document.getElementById('chatChevron');
+  widget.classList.toggle('chat-collapsed');
+  chevron.classList.toggle('fa-chevron-up');
+  chevron.classList.toggle('fa-chevron-down');
+}
+</script>
 
 {% block scripts %}{% endblock %}
 </body>

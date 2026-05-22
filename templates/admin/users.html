@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Admin - Users{% endblock %}
+{% block content %}
+<div class="admin-container">
+  <h1>User Management</h1>
+  <a href="{{ url_for('admin.dashboard') }}">&larr; Back to Dashboard</a>
+  <table style="width:100%;border-collapse:collapse;margin-top:20px;">
+    <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Admin</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for u in users.items %}
+      <tr style="border-bottom:1px solid var(--border-color);">
+        <td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.email }}</td>
+        <td>{{ 'Yes' if u.is_admin else 'No' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=u.id) }}" style="display:inline;">
+            <button type="submit" style="background:var(--primary-color);color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">
+              {{ 'Remove Admin' if u.is_admin else 'Make Admin' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top:20px;">
+    {% if users.has_prev %}<a href="{{ url_for('admin.users', page=users.prev_num) }}">&laquo; Prev</a>{% endif %}
+    Page {{ users.page }} of {{ users.pages }}
+    {% if users.has_next %}<a href="{{ url_for('admin.users', page=users.next_num) }}">Next &raquo;</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

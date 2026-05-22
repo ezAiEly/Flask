@@ -1,7 +1,10 @@
-from flask import request
+from flask import request, session
 from flask_socketio import emit, join_room
 from flask_jwt_extended import decode_token
-from models import db, User, Danmaku
+from models import db, User, Danmaku, award_xp, XP_DANMAKU
+
+chat_history = []
+MAX_CHAT_HISTORY = 200
 
 
 def register_events(socketio):
@@ -10,6 +13,36 @@ def register_events(socketio):
         video_id = data.get('video_id')
         if video_id:
             join_room(f'video_{video_id}')
+
+    @socketio.on('join_chat')
+    def handle_join_chat():
+        join_room('chat_room')
+        emit('chat_history', chat_history[-50:])
+
+    @socketio.on('send_message')
+    def handle_chat_message(data):
+        from datetime import datetime
+        import uuid
+        if not data.get('message', '').strip():
+            return
+        username = 'Guest'
+        avatar = None
+        if session.get('user_id'):
+            user = db.session.get(User, session['user_id'])
+            if user:
+                username = user.username
+                avatar = user.avatar
+        msg = {
+            'id': str(uuid.uuid4())[:8],
+            'username': username,
+            'avatar': avatar,
+            'message': data['message'][:500],
+            'time': datetime.utcnow().strftime('%H:%M:%S'),
+        }
+        chat_history.append(msg)
+        if len(chat_history) > MAX_CHAT_HISTORY:
+            del chat_history[:-MAX_CHAT_HISTORY]
+        emit('new_message', msg, room='chat_room')
 
     @socketio.on('send_danmaku')
     def handle_send_danmaku(data):
@@ -42,6 +75,8 @@ def register_events(socketio):
         db.session.commit()
 
         user = db.session.get(User, user_id)
+        award_xp(user, XP_DANMAKU)
+        db.session.commit()
 
         danmaku_data = {
             'id': danmaku.id,
