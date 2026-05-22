@@ -5,7 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}视频社区{% endblock %}</title>
-  <!-- Prevent FOUC: apply theme before paint (landing-page skill dark mode pattern) -->
+  <!-- Preconnect to CDN origins (save ~300ms on first load) -->
+  <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <!-- Prevent FOUC: apply theme before paint -->
   <script>
     (function(){
       var theme = localStorage.getItem('theme') || 'system';
@@ -15,7 +18,8 @@
     })();
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <!-- Font Awesome is non-critical — defer load with onload trick -->
+  <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.min.css" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.css">
   <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
 
@@ -150,14 +154,15 @@
 </button>
 
 <!-- ==================== Scripts ==================== -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.js"></script>
-<script src="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/micromodal/0.4.10/micromodal.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.js"></script>
+<script defer src="https://cdn.bootcdn.net/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/micromodal/0.4.10/micromodal.min.js"></script>
 <script>
   // ── Dropdown ──────────────────────────────────────
   function toggleDropdown() {
     var menu = document.getElementById("dropdownMenu");
     var btn = document.querySelector('.avatar');
+    if (!btn) return;
     var isOpen = menu.classList.toggle("show");
     btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
@@ -175,19 +180,26 @@
     }
   });
 
-  // ── Toast (backed by Notyf) ─────────────────────────
-  var notyf = new Notyf({
-    duration: 3500,
-    position: { x: 'right', y: 'bottom' },
-    types: [
-      { type: 'info', background: '#00a1d6', icon: false },
-      { type: 'error', background: '#f45a8d', icon: false },
-      { type: 'success', background: '#52c41a', icon: false }
-    ]
-  });
+  // ── Toast (backed by Notyf) — wait for defer scripts ──
+  var notyf;
   function showToast(message, type) {
-    notyf.open({ type: type || 'info', message: message });
+    if (notyf) { notyf.open({ type: type || 'info', message: message }); }
+    else { (window._toastQueue = window._toastQueue || []).push([message, type]); }
   }
+  document.addEventListener('DOMContentLoaded', function() {
+    notyf = new Notyf({
+      duration: 3500,
+      position: { x: 'right', y: 'bottom' },
+      types: [
+        { type: 'info', background: '#00a1d6', icon: false },
+        { type: 'error', background: '#f45a8d', icon: false },
+        { type: 'success', background: '#52c41a', icon: false }
+      ]
+    });
+    var q = window._toastQueue || [];
+    for (var i = 0; i < q.length; i++) notyf.open({ type: q[i][1] || 'info', message: q[i][0] });
+    window._toastQueue = [];
+  });
 
   // ── 401 拦截（JWT 过期跳转登录） ────────────────────
   (function() {
@@ -340,8 +352,8 @@
 <!-- Live2D Widget -->
 {% if current_user and (current_user.preferences or {}).get('mascot_visible', True) %}
 <link rel="stylesheet" href="{{ url_for('static', filename='live2d/waifu.css') }}">
-<script src="{{ url_for('static', filename='live2d/live2d.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/live2d-widget.js') }}"></script>
+<script defer src="{{ url_for('static', filename='live2d/live2d.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/live2d-widget.js') }}"></script>
 {% endif %}
 
 <!-- Live Chat Widget -->
@@ -378,22 +390,10 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 (function() {
-  var socket = io();
-  socket.emit('join_chat');
-
-  socket.on('chat_history', function(messages) {
-    messages.forEach(function(msg) { appendMessage(msg); });
-    scrollChatBottom();
-  });
-
-  socket.on('new_message', function(msg) {
-    appendMessage(msg);
-    scrollChatBottom();
-  });
-
+  var socket;
   function appendMessage(msg) {
     var div = document.createElement('div');
     div.className = 'chat-msg';
@@ -408,23 +408,34 @@
     el.scrollTop = el.scrollHeight;
   }
 
-  document.getElementById('chatSendBtn').onclick = function() {
-    var input = document.getElementById('chatInput');
-    if (input.value.trim()) {
-      socket.emit('send_message', { message: input.value });
-      input.value = '';
-    }
-  };
-
-  document.getElementById('chatInput').onkeydown = function(e) {
-    if (e.key === 'Enter') document.getElementById('chatSendBtn').click();
-  };
-
   function escapeHtml(text) {
     var div = document.createElement('div');
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    socket = io();
+    socket.emit('join_chat');
+    socket.on('chat_history', function(messages) {
+      messages.forEach(function(msg) { appendMessage(msg); });
+      scrollChatBottom();
+    });
+    socket.on('new_message', function(msg) {
+      appendMessage(msg);
+      scrollChatBottom();
+    });
+    document.getElementById('chatSendBtn').onclick = function() {
+      var input = document.getElementById('chatInput');
+      if (input.value.trim()) {
+        socket.emit('send_message', { message: input.value });
+        input.value = '';
+      }
+    };
+    document.getElementById('chatInput').onkeydown = function(e) {
+      if (e.key === 'Enter') document.getElementById('chatSendBtn').click();
+    };
+  });
 })();
 
 function toggleChat() {

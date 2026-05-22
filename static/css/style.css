@@ -73,7 +73,26 @@ html.theme-ready {
   transition: background-color 0.3s ease;
 }
 
-html.theme-ready * {
+html.theme-ready body,
+html.theme-ready header,
+html.theme-ready main,
+html.theme-ready aside,
+html.theme-ready footer,
+html.theme-ready nav,
+html.theme-ready section,
+html.theme-ready article,
+html.theme-ready .card,
+html.theme-ready .video-card,
+html.theme-ready .sidebar,
+html.theme-ready .header,
+html.theme-ready input,
+html.theme-ready textarea,
+html.theme-ready select,
+html.theme-ready button,
+html.theme-ready a,
+html.theme-ready table,
+html.theme-ready th,
+html.theme-ready td {
   transition: background-color 0.3s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
