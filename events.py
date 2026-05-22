@@ -21,7 +21,7 @@ def register_events(socketio):
 
     @socketio.on('send_message')
     def handle_chat_message(data):
-        from datetime import datetime
+        from datetime import datetime, timezone
         import uuid
         if not data.get('message', '').strip():
             return
@@ -37,7 +37,7 @@ def register_events(socketio):
             'username': username,
             'avatar': avatar,
             'message': data['message'][:500],
-            'time': datetime.utcnow().strftime('%H:%M:%S'),
+            'time': datetime.now(timezone.utc).strftime('%H:%M:%S'),
         }
         chat_history.append(msg)
         if len(chat_history) > MAX_CHAT_HISTORY:

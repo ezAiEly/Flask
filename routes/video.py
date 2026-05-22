@@ -7,6 +7,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Video, Danmaku, VideoLike, VideoCoin, VideoFavorite, VideoView, Tag, Comment, CommentLike
 from models import allowed_video_file, push_feed, get_video_duration, set_video_tags
 from models import get_recommendations, _fallback_hot, get_hot_videos
+from models import VideoProgress, Report, Notification
+from models import push_notification, award_xp
+from models import XP_COMMENT, XP_DANMAKU, XP_VIDEO_WATCHED
 
 video_bp = Blueprint('video', __name__)
 
@@ -24,9 +27,11 @@ def video_page(video_id):
             user_id=user_id, video_id=video_id
         ).first()
         if existing:
-            existing.viewed_at = datetime.datetime.utcnow()
+            existing.viewed_at = datetime.datetime.now(datetime.UTC)
         else:
             db.session.add(VideoView(user_id=user_id, video_id=video_id))
+            viewer = db.session.get(User, user_id)
+            award_xp(viewer, XP_VIDEO_WATCHED)
 
     db.session.commit()
     return render_template('video.html', video=video)
@@ -259,8 +264,12 @@ def toggle_like(video_id):
         return jsonify({'liked': False, 'like_count': count})
 
     db.session.add(VideoLike(user_id=user_id, video_id=video_id))
-    db.session.commit()
     push_feed(user_id, 'like', video_id)
+    push_notification(video.user_id, user_id, 'like',
+        f'{session.get("username", "有人")} 赞了你的视频《{video.title}》',
+        f'/video/{video_id}')
+    author = db.session.get(User, video.user_id)
+    award_xp(author, 2)  # XP_LIKE_RECEIVED
     db.session.commit()
     count = VideoLike.query.filter_by(video_id=video_id).count()
     return jsonify({'liked': True, 'like_count': count})
@@ -286,8 +295,12 @@ def coin_video(video_id):
         db.session.commit()
     else:
         db.session.add(VideoCoin(user_id=user_id, video_id=video_id, count=count))
-        db.session.commit()
         push_feed(user_id, 'coin', video_id)
+        push_notification(video.user_id, user_id, 'coin',
+            f'{session.get("username", "有人")} 给你的视频《{video.title}》投了 {count} 枚硬币',
+            f'/video/{video_id}')
+        author = db.session.get(User, video.user_id)
+        award_xp(author, 5)  # XP_COIN_RECEIVED
         db.session.commit()
 
     total_coins = db.session.query(
@@ -313,8 +326,10 @@ def toggle_favorite(video_id):
         return jsonify({'favorited': False, 'favorite_count': count})
 
     db.session.add(VideoFavorite(user_id=user_id, video_id=video_id))
-    db.session.commit()
     push_feed(user_id, 'favorite', video_id)
+    push_notification(video.user_id, user_id, 'favorite',
+        f'{session.get("username", "有人")} 收藏了你的视频《{video.title}》',
+        f'/video/{video_id}')
     db.session.commit()
     count = VideoFavorite.query.filter_by(video_id=video_id).count()
     return jsonify({'favorited': True, 'favorite_count': count})
@@ -395,6 +410,11 @@ def create_comment(video_id):
 
     comment = Comment(user_id=user_id, video_id=video_id, content=content)
     db.session.add(comment)
+    user = db.session.get(User, user_id)
+    award_xp(user, XP_COMMENT)
+    push_notification(video.user_id, user_id, 'comment',
+        f'{session.get("username", "有人")} 评论了你的视频《{video.title}》',
+        f'/video/{video_id}')
     db.session.commit()
 
     return jsonify(_serialize_comment(comment, user_id)), 201
@@ -419,6 +439,11 @@ def reply_comment(comment_id):
     reply = Comment(user_id=user_id, video_id=parent.video_id,
                     content=content, parent_id=comment_id)
     db.session.add(reply)
+    award_xp(db.session.get(User, user_id), XP_COMMENT)
+    if parent.user_id != user_id:
+        push_notification(parent.user_id, user_id, 'reply',
+            f'{session.get("username", "有人")} 回复了你的评论',
+            f'/video/{parent.video_id}')
     db.session.commit()
 
     return jsonify(_serialize_comment(reply, user_id)), 201
@@ -549,3 +574,57 @@ def hot_videos():
         'total': total,
         'has_more': (page * limit) < total,
     })
+
+
+# ── 观看进度 ─────────────────────────────────────────────
+
+@video_bp.route('/api/video/<int:video_id>/progress', methods=['GET'])
+def get_progress(video_id):
+    if 'user_id' not in session:
+        return jsonify({'position': 0})
+    vp = VideoProgress.query.filter_by(user_id=session['user_id'], video_id=video_id).first()
+    return jsonify({'position': vp.position if vp else 0})
+
+
+@video_bp.route('/api/video/<int:video_id>/progress', methods=['POST'])
+def save_progress(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    data = request.get_json() or {}
+    position = max(0, float(data.get('position', 0)))
+    vp = VideoProgress.query.filter_by(user_id=session['user_id'], video_id=video_id).first()
+    if vp:
+        vp.position = position
+        vp.updated_at = datetime.datetime.now(datetime.UTC)
+    else:
+        vp = VideoProgress(user_id=session['user_id'], video_id=video_id, position=position)
+        db.session.add(vp)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ── 举报 ─────────────────────────────────────────────────
+
+@video_bp.route('/api/video/<int:video_id>/report', methods=['POST'])
+def report_video(video_id):
+    if 'user_id' not in session:
+        return jsonify({'error': '请先登录'}), 401
+    video = Video.query.get_or_404(video_id)
+    if str(video.user_id) == str(session['user_id']):
+        return jsonify({'error': '不能举报自己的视频'}), 400
+    data = request.get_json() or {}
+    reason = data.get('reason', '').strip()
+    if not reason:
+        return jsonify({'error': '请选择举报原因'}), 400
+    existing = Report.query.filter_by(reporter_id=session['user_id'], video_id=video_id, status='pending').first()
+    if existing:
+        return jsonify({'error': '你已举报过该视频，请等待处理'}), 409
+    r = Report(
+        reporter_id=session['user_id'],
+        video_id=video_id,
+        reason=reason,
+        description=data.get('description', '').strip()
+    )
+    db.session.add(r)
+    db.session.commit()
+    return jsonify({'message': '举报已提交，感谢你的反馈'})

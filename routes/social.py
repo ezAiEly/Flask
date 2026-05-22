@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User
+from models import db, User, push_notification
 
 social_bp = Blueprint('social', __name__)
 
@@ -24,6 +24,8 @@ def toggle_follow(target_id):
         return jsonify({'following': False, 'follower_count': target.followers_ref.count()})
     else:
         user.follow(target)
+        push_notification(target_id, user_id, 'follow',
+            f'{user.username} 关注了你', f'/user/{user.username}')
         db.session.commit()
         return jsonify({'following': True, 'follower_count': target.followers_ref.count()})
 

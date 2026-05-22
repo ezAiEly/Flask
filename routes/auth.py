@@ -153,7 +153,7 @@ def reset_password():
     if len(new_pw) < 6:
         return jsonify({'error': '新密码至少6位'}), 400
     reset = PasswordResetToken.query.filter_by(token=token_str, used=False).first()
-    if not reset or reset.expires_at < datetime.datetime.utcnow():
+    if not reset or reset.expires_at < datetime.datetime.now(datetime.UTC):
         return jsonify({'error': '链接已过期或无效'}), 400
     user = db.session.get(User, reset.user_id)
     user.set_password(new_pw)

@@ -95,7 +95,7 @@ class User(db.Model):
     preferences = db.Column(db.JSON, default=dict)
     mascot_image = db.Column(db.String(300), default='')
     is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     followed = db.relationship(
         'User', secondary=followers,
@@ -169,7 +169,7 @@ class Video(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     views = db.Column(db.Integer, default=0)
     cover_image = db.Column(db.String(300), default='')
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     user = db.relationship('User', backref='videos', lazy=True)
     tags = db.relationship('Tag', secondary=video_tags, lazy='joined',
@@ -218,7 +218,7 @@ class Danmaku(db.Model):
     play_time = db.Column(db.Float, nullable=False)
     color = db.Column(db.String(7), default='#FFFFFF')
     mode = db.Column(db.String(10), default='scroll')
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     user = db.relationship('User', backref='danmakus', lazy=True)
     video = db.relationship('Video', backref='danmakus', lazy=True)
@@ -228,7 +228,7 @@ class VideoLike(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_like'),)
 
 
@@ -237,7 +237,7 @@ class VideoCoin(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
     count = db.Column(db.Integer, default=1)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_coin'),)
 
 
@@ -245,7 +245,7 @@ class VideoFavorite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_fav'),)
 
 
@@ -258,7 +258,7 @@ class VideoView(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
-    viewed_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    viewed_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
 
 class Feed(db.Model):
@@ -267,7 +267,7 @@ class Feed(db.Model):
     actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     action = db.Column(db.String(20), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     actor = db.relationship('User', foreign_keys=[actor_id])
     video = db.relationship('Video')
@@ -279,7 +279,7 @@ class Comment(db.Model):
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
     content = db.Column(db.Text, nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     user = db.relationship('User', backref='comments', lazy=True)
     video = db.relationship('Video', backref='comments', lazy=True)
@@ -291,7 +291,7 @@ class CommentLike(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('user_id', 'comment_id', name='uq_comment_like'),)
 
 
@@ -303,7 +303,7 @@ class Game(db.Model):
     cover_image = db.Column(db.String(300), default='')
     embed_url = db.Column(db.String(500), default='')
     play_count = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     @property
     def cover_url(self):
@@ -326,7 +326,7 @@ class Notification(db.Model):
     message = db.Column(db.String(300), nullable=False)
     link = db.Column(db.String(300), default='')
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     actor = db.relationship('User', foreign_keys=[actor_id])
 
@@ -337,9 +337,9 @@ def push_notification(user_id, actor_id, ntype, message, link=''):
     existing = Notification.query.filter_by(
         user_id=user_id, actor_id=actor_id, type=ntype,
         is_read=False
-    ).filter(Notification.created_at >= datetime.datetime.utcnow() - datetime.timedelta(hours=1)).first()
+    ).filter(Notification.created_at >= datetime.datetime.now(datetime.UTC)() - datetime.timedelta(hours=1)).first()
     if existing:
-        existing.created_at = datetime.datetime.utcnow()
+        existing.created_at = datetime.datetime.now(datetime.UTC)()
         existing.message = message
         existing.link = link
         return existing
@@ -356,7 +356,7 @@ class Playlist(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(300), default='')
     is_public = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     user = db.relationship('User', backref='playlists', lazy=True)
     videos = db.relationship('PlaylistVideo', backref='playlist', lazy='dynamic',
@@ -369,7 +369,7 @@ class PlaylistVideo(db.Model):
     playlist_id = db.Column(db.Integer, db.ForeignKey('playlist.id'), nullable=False, index=True)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
     position = db.Column(db.Integer, default=0)
-    added_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    added_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('playlist_id', 'video_id', name='uq_playlist_video'),)
 
     video = db.relationship('Video')
@@ -382,7 +382,7 @@ class VideoProgress(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False, index=True)
     position = db.Column(db.Float, default=0)
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
     __table_args__ = (db.UniqueConstraint('user_id', 'video_id', name='uq_video_progress'),)
 
 
@@ -396,7 +396,7 @@ class Report(db.Model):
     description = db.Column(db.Text, default='')
     status = db.Column(db.String(20), default='pending', index=True)
     handled_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
     reporter = db.relationship('User', foreign_keys=[reporter_id])
     video = db.relationship('Video')
@@ -416,7 +416,7 @@ class PasswordResetToken(db.Model):
     @classmethod
     def create_for(cls, user):
         token = secrets.token_urlsafe(32)
-        expires = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        expires = datetime.datetime.now(datetime.UTC)() + datetime.timedelta(hours=1)
         reset = cls(user_id=user.id, token=token, expires_at=expires)
         db.session.add(reset)
         return reset
@@ -432,7 +432,7 @@ class WebhookLog(db.Model):
     signature_valid = db.Column(db.Boolean, default=False)
     processed = db.Column(db.Boolean, default=False)
     result = db.Column(db.String(200), default='')
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
 
 
 # ── XP 奖励 ───────────────────────────────────────────────

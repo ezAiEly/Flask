@@ -2,130 +2,473 @@
 {% block title %}站点设置{% endblock %}
 
 {% block content %}
-<div class="settings-wrap">
-  <h1><i class="fas fa-sliders-h"></i> 站点设置</h1>
-
-  <form method="POST" class="settings-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-    <!-- 主题色彩 -->
-    <section class="settings-section">
-      <h2><i class="fas fa-palette"></i> 主题色彩</h2>
-      <p class="text-muted">选择你喜欢的强调色，会应用到按钮、链接等元素上。</p>
-
-      <div class="color-presets">
-        {% set colors = [
-          ('#00a1d6', 'B站蓝'),
-          ('#fb7299', 'B站粉'),
-          ('#52c41a', '翠绿'),
-          ('#f59e0b', '橙黄'),
-          ('#722ed1', '紫色'),
-          ('#f5222d', '红色'),
-        ] %}
-        {% for color, name in colors %}
-        <button type="button" class="color-preset" data-color="{{ color }}" title="{{ name }}"
-                style="background:{{ color }};" aria-label="选择{{ name }}强调色">
-          {% if user.preferences and user.preferences.get('accent_color', '#00a1d6') == color %}
-          <i class="fas fa-check"></i>
-          {% endif %}
-        </button>
-        {% endfor %}
-        <div class="color-custom-wrap">
-          <input type="color" id="accentColorPicker" name="accent_color"
-                 value="{{ (user.preferences or {}).get('accent_color', '#00a1d6') }}"
-                 title="自定义颜色" aria-label="自定义强调色">
-          <label for="accentColorPicker" class="color-custom-label">自定义</label>
-        </div>
-      </div>
-    </section>
-
-    <!-- 主题模式 -->
-    <section class="settings-section">
-      <h2><i class="fas fa-moon"></i> 主题模式</h2>
-      <p class="text-muted" style="margin-bottom:0.75rem;">选择深色/浅色模式或跟随系统。</p>
-      <div class="settings-radio-group" id="themeModeGroup">
-        {% set tm = (user.preferences or {}).get('theme_mode', 'system') %}
-        <label>
-          <input type="radio" name="theme_mode" value="light" {{ 'checked' if tm == 'light' }}>
-          <span><i class="fas fa-sun"></i> 浅色</span>
-        </label>
-        <label>
-          <input type="radio" name="theme_mode" value="dark" {{ 'checked' if tm == 'dark' }}>
-          <span><i class="fas fa-moon"></i> 深色</span>
-        </label>
-        <label>
-          <input type="radio" name="theme_mode" value="system" {{ 'checked' if tm == 'system' }}>
-          <span><i class="fas fa-desktop"></i> 跟随系统</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- 布局与显示 -->
-    <section class="settings-section">
-      <h2><i class="fas fa-columns"></i> 布局与显示</h2>
-      <div class="settings-row">
-        <div class="settings-col">
-          <label class="settings-label">侧边栏</label>
-          <div class="settings-radio-group">
-            <label>
-              <input type="radio" name="sidebar_default" value="expanded"
-                     {{ 'checked' if not (user.preferences or {}).get('sidebar_default') or (user.preferences or {}).get('sidebar_default') == 'expanded' }}>
-              <span>展开</span>
-            </label>
-            <label>
-              <input type="radio" name="sidebar_default" value="collapsed"
-                     {{ 'checked' if (user.preferences or {}).get('sidebar_default') == 'collapsed' }}>
-              <span>折叠</span>
-            </label>
-          </div>
-        </div>
-        <div class="settings-col">
-          <label class="settings-label">字体大小</label>
-          <div class="settings-radio-group">
-            {% set fs = (user.preferences or {}).get('font_size', 'medium') %}
-            <label>
-              <input type="radio" name="font_size" value="small" {{ 'checked' if fs == 'small' }}>
-              <span>小</span>
-            </label>
-            <label>
-              <input type="radio" name="font_size" value="medium" {{ 'checked' if fs == 'medium' }}>
-              <span>中</span>
-            </label>
-            <label>
-              <input type="radio" name="font_size" value="large" {{ 'checked' if fs == 'large' }}>
-              <span>大</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <label class="settings-checkbox" style="margin-top:0.5rem;">
-        <input type="checkbox" name="reduce_motion" {{ 'checked' if (user.preferences or {}).get('reduce_motion') }}>
-        <span>减少动画效果</span>
-      </label>
-
-
-    </section>
-
-    <!-- 看板娘设置 -->
-    <section class="settings-section">
-      <h2><i class="fas fa-cat"></i> 看板娘设置</h2>
-      {% set p = user.preferences or {} %}
-      <label class="settings-checkbox">
-        <input type="checkbox" name="mascot_visible" {{ 'checked' if p.get('mascot_visible', True) }}>
-        <span>显示 Live2D 看板娘</span>
-      </label>
-      <p class="text-muted" style="font-size:0.75rem;margin-top:8px;">提示：看板娘支持拖拽和点击互动，右下角可切换模型。</p>
-    </section>
-
-    <button type="submit" class="btn btn-primary">
-      <i class="fas fa-save"></i> 保存设置
+{% set p = user.preferences or {} %}
+<div class="settings-app">
+  <!-- Sidebar tabs -->
+  <aside class="settings-sidebar" role="tablist" aria-label="设置分类">
+    <button class="settings-tab active" data-tab="appearance" role="tab" aria-selected="true" aria-controls="panel-appearance">
+      <i class="fas fa-palette"></i> 外观
     </button>
-  </form>
-</div>
+    <button class="settings-tab" data-tab="live2d" role="tab" aria-selected="false" aria-controls="panel-live2d">
+      <i class="fas fa-cat"></i> 看板娘
+    </button>
+    <button class="settings-tab" data-tab="playback" role="tab" aria-selected="false" aria-controls="panel-playback">
+      <i class="fas fa-play"></i> 播放
+    </button>
+    <button class="settings-tab" data-tab="account" role="tab" aria-selected="false" aria-controls="panel-account">
+      <i class="fas fa-user-circle"></i> 账户
+    </button>
+  </aside>
 
+  <!-- Main content -->
+  <div class="settings-main">
+    <h1 class="settings-title"><i class="fas fa-sliders-h"></i> 站点设置</h1>
+
+    <form method="POST" class="settings-form" id="settingsForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- ═══════════ APPEARANCE ═══════════ -->
+      <div class="settings-panel active" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance">
+
+        <!-- Theme mode -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-theme">
+            <h2><i class="fas fa-moon"></i> 主题模式</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-theme">
+            <p class="card-desc">选择深色 / 浅色 / 跟随系统。</p>
+            <div class="radio-tiles" id="themeModeGroup">
+              {% set tm = p.get('theme_mode', 'system') %}
+              <label class="radio-tile {{ 'active' if tm == 'light' }}">
+                <input type="radio" name="theme_mode" value="light" {{ 'checked' if tm == 'light' }}>
+                <i class="fas fa-sun"></i>
+                <span>浅色</span>
+              </label>
+              <label class="radio-tile {{ 'active' if tm == 'dark' }}">
+                <input type="radio" name="theme_mode" value="dark" {{ 'checked' if tm == 'dark' }}>
+                <i class="fas fa-moon"></i>
+                <span>深色</span>
+              </label>
+              <label class="radio-tile {{ 'active' if tm == 'system' }}">
+                <input type="radio" name="theme_mode" value="system" {{ 'checked' if tm == 'system' }}>
+                <i class="fas fa-desktop"></i>
+                <span>跟随系统</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Accent color -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-color">
+            <h2><i class="fas fa-palette"></i> 强调色</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-color">
+            <p class="card-desc">选择你喜欢的强调色，会应用到按钮、链接等交互元素上。</p>
+            <div class="color-presets">
+              {% set colors = [
+                ('#00a1d6', 'B站蓝'),
+                ('#fb7299', 'B站粉'),
+                ('#52c41a', '翠绿'),
+                ('#f59e0b', '橙黄'),
+                ('#722ed1', '紫色'),
+                ('#f5222d', '红色'),
+              ] %}
+              {% set cur_color = p.get('accent_color', '#00a1d6') %}
+              {% for color, name in colors %}
+              <button type="button" class="color-preset {{ 'active' if cur_color == color }}" data-color="{{ color }}" title="{{ name }}"
+                      style="--c:{{ color }};" aria-label="选择{{ name }}">
+                {% if cur_color == color %}<i class="fas fa-check"></i>{% endif %}
+              </button>
+              {% endfor %}
+              <div class="color-custom-wrap">
+                <input type="color" id="accentColorPicker" name="accent_color"
+                       value="{{ cur_color }}" title="自定义颜色" aria-label="自定义强调色">
+                <label for="accentColorPicker" class="color-custom-label">自定义</label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Layout -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-layout">
+            <h2><i class="fas fa-columns"></i> 布局</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-layout">
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">侧边栏默认状态</span>
+                <span class="setting-hint">页面加载时侧边栏的初始状态</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set sd = p.get('sidebar_default', 'expanded') %}
+                <label class="radio-tile {{ 'active' if sd == 'expanded' }}">
+                  <input type="radio" name="sidebar_default" value="expanded" {{ 'checked' if sd == 'expanded' }}>
+                  <span>展开</span>
+                </label>
+                <label class="radio-tile {{ 'active' if sd == 'collapsed' }}">
+                  <input type="radio" name="sidebar_default" value="collapsed" {{ 'checked' if sd == 'collapsed' }}>
+                  <span>折叠</span>
+                </label>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">字体大小</span>
+                <span class="setting-hint">调整页面文字大小</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set fs = p.get('font_size', 'medium') %}
+                <label class="radio-tile {{ 'active' if fs == 'small' }}">
+                  <input type="radio" name="font_size" value="small" {{ 'checked' if fs == 'small' }}>
+                  <span>小</span>
+                </label>
+                <label class="radio-tile {{ 'active' if fs == 'medium' }}">
+                  <input type="radio" name="font_size" value="medium" {{ 'checked' if fs == 'medium' }}>
+                  <span>中</span>
+                </label>
+                <label class="radio-tile {{ 'active' if fs == 'large' }}">
+                  <input type="radio" name="font_size" value="large" {{ 'checked' if fs == 'large' }}>
+                  <span>大</span>
+                </label>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">减少动画效果</span>
+                <span class="setting-hint">降低过渡动画，适合性能敏感的设备</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="reduce_motion" {{ 'checked' if p.get('reduce_motion') }}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══════════ LIVE2D ═══════════ -->
+      <div class="settings-panel" id="panel-live2d" role="tabpanel" aria-labelledby="tab-live2d">
+
+        <!-- Visibility -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-mascot-visible">
+            <h2><i class="fas fa-eye"></i> 显示看板娘</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-mascot-visible">
+            <p class="card-desc">在页面右下角显示 Live2D 看板娘。</p>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">启用看板娘</span>
+                <span class="setting-hint">关闭后看板娘将不会出现在任何页面上</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="mascot_visible" id="mascotVisible" {{ 'checked' if p.get('mascot_visible', True) }}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Model selection -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-model">
+            <h2><i class="fas fa-user-tag"></i> 模型选择</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-model">
+            <p class="card-desc">选择你喜欢的 Live2D 角色模型。点按预览即可切换。</p>
+            {% set models = [
+              (0, 'Pio', 'Potion-Maker/Pio', '#f8a5c2'),
+              (1, 'Tia', 'Potion-Maker/Tia', '#a5d8f8'),
+              (2, '22 娘', 'bilibili-live/22', '#00a1d6'),
+              (3, '33 娘', 'bilibili-live/33', '#fb7299'),
+              (4, 'Shizuku', 'ShizukuTalk/shizuku-48', '#c8b8f0'),
+              (5, 'Shizuku 睡衣', 'ShizukuTalk/shizuku-pajama', '#f0c8d8'),
+              (6, 'Neptune', 'HyperdimensionNeptunia/neptune_classic', '#b088e0'),
+              (7, 'Noir', 'HyperdimensionNeptunia/noir_classic', '#404040'),
+              (8, 'Murakumo', 'KantaiCollection/murakumo', '#e8d0a0'),
+            ] %}
+            {% set cur_model = p.get('l2d_model', '0')|int %}
+            <div class="model-grid">
+              {% for id, name, folder, bg in models %}
+              <label class="model-card {{ 'active' if cur_model == id }}" data-model="{{ id }}">
+                <input type="radio" name="l2d_model" value="{{ id }}" {{ 'checked' if cur_model == id }}>
+                <div class="model-preview" style="background:{{ bg }};">
+                  <i class="fas fa-user"></i>
+                </div>
+                <span class="model-name">{{ name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <!-- Size & Position -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-mascot-layout">
+            <h2><i class="fas fa-arrows-alt"></i> 尺寸与位置</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-mascot-layout">
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">看板娘大小</span>
+                <span class="setting-hint">调整看板娘在页面上的显示尺寸</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set sz = p.get('l2d_size', 'medium') %}
+                <label class="radio-tile {{ 'active' if sz == 'small' }}">
+                  <input type="radio" name="l2d_size" value="small" {{ 'checked' if sz == 'small' }}>
+                  <span>小</span>
+                </label>
+                <label class="radio-tile {{ 'active' if sz == 'medium' }}">
+                  <input type="radio" name="l2d_size" value="medium" {{ 'checked' if sz == 'medium' }}>
+                  <span>中</span>
+                </label>
+                <label class="radio-tile {{ 'active' if sz == 'large' }}">
+                  <input type="radio" name="l2d_size" value="large" {{ 'checked' if sz == 'large' }}>
+                  <span>大</span>
+                </label>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">屏幕位置</span>
+                <span class="setting-hint">看板娘出现在屏幕左侧还是右侧</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set pos = p.get('l2d_position', 'right') %}
+                <label class="radio-tile {{ 'active' if pos == 'left' }}">
+                  <input type="radio" name="l2d_position" value="left" {{ 'checked' if pos == 'left' }}>
+                  <i class="fas fa-arrow-left"></i>
+                  <span>左侧</span>
+                </label>
+                <label class="radio-tile {{ 'active' if pos == 'right' }}">
+                  <input type="radio" name="l2d_position" value="right" {{ 'checked' if pos == 'right' }}>
+                  <i class="fas fa-arrow-right"></i>
+                  <span>右侧</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Model info -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-mascot-info">
+            <h2><i class="fas fa-info-circle"></i> 模型信息</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-mascot-info">
+            <p class="card-desc">当前加载的 Live2D 模型由 <a href="https://github.com/stevenjoezhang/live2d-widget" target="_blank">live2d-widget</a> 项目提供支持。</p>
+            <p class="card-desc">模型数据来自 <a href="https://github.com/fghrsh/live2d_api" target="_blank">fghrsh/live2d_api</a>，使用 Cubism 2 渲染引擎。看板娘支持拖拽互动，点击工具按钮可切换模型与服装。</p>
+            <div class="model-stats">
+              <div class="stat-item"><span class="stat-num">9</span><span class="stat-label">可用模型</span></div>
+              <div class="stat-item"><span class="stat-num">5</span><span class="stat-label">系列来源</span></div>
+              <div class="stat-item"><span class="stat-num">3D</span><span class="stat-label">Live2D 骨骼</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══════════ PLAYBACK ═══════════ -->
+      <div class="settings-panel" id="panel-playback" role="tabpanel" aria-labelledby="tab-playback">
+
+        <!-- Quality -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-quality">
+            <h2><i class="fas fa-video"></i> 播放质量</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-quality">
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">默认画质</span>
+                <span class="setting-hint">打开视频时的默认清晰度，可根据网络情况自动调整</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set q = p.get('default_quality', 'auto') %}
+                <label class="radio-tile {{ 'active' if q == 'auto' }}">
+                  <input type="radio" name="default_quality" value="auto" {{ 'checked' if q == 'auto' }}>
+                  <span>自动</span>
+                </label>
+                <label class="radio-tile {{ 'active' if q == '1080p' }}">
+                  <input type="radio" name="default_quality" value="1080p" {{ 'checked' if q == '1080p' }}>
+                  <span>1080P</span>
+                </label>
+                <label class="radio-tile {{ 'active' if q == '720p' }}">
+                  <input type="radio" name="default_quality" value="720p" {{ 'checked' if q == '720p' }}>
+                  <span>720P</span>
+                </label>
+                <label class="radio-tile {{ 'active' if q == '480p' }}">
+                  <input type="radio" name="default_quality" value="480p" {{ 'checked' if q == '480p' }}>
+                  <span>480P</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Autoplay & Speed -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-autoplay">
+            <h2><i class="fas fa-redo-alt"></i> 播放行为</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-autoplay">
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">自动连播</span>
+                <span class="setting-hint">视频结束后自动播放下一个推荐视频</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" name="autoplay" {{ 'checked' if p.get('autoplay') }}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">默认播放速度</span>
+                <span class="setting-hint">新视频打开时的播放倍速</span>
+              </div>
+              <div class="radio-tiles small">
+                {% set sp = p.get('default_speed', '1') %}
+                {% for val, name in [('0.5', '0.5×'), ('0.75', '0.75×'), ('1', '1×'), ('1.25', '1.25×'), ('1.5', '1.5×'), ('2', '2×')] %}
+                <label class="radio-tile {{ 'active' if sp == val }}">
+                  <input type="radio" name="default_speed" value="{{ val }}" {{ 'checked' if sp == val }}>
+                  <span>{{ name }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══════════ ACCOUNT ═══════════ -->
+      <div class="settings-panel" id="panel-account" role="tabpanel" aria-labelledby="tab-account">
+
+        <!-- Profile -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-profile">
+            <h2><i class="fas fa-id-card"></i> 个人资料</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-profile">
+            <div class="profile-summary">
+              <div class="profile-avatar">
+                {% if user.avatar %}
+                  {% if '/' in user.avatar %}
+                    <img src="{{ url_for('static', filename=user.avatar) }}" alt="头像">
+                  {% else %}
+                    <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}" alt="头像">
+                  {% endif %}
+                {% else %}
+                  <span class="avatar-placeholder">{{ user.username[0] | upper }}</span>
+                {% endif %}
+              </div>
+              <div class="profile-info">
+                <strong>{{ user.username }}</strong>
+                <span class="profile-badge" style="background:{{ user.level_color }}">Lv{{ user.level }}</span>
+                <span>{{ user.email }}</span>
+              </div>
+            </div>
+            <div class="account-links">
+              <a href="{{ url_for('main.profile') }}" class="btn btn-outline btn-sm"><i class="fas fa-user-edit"></i> 编辑资料</a>
+              <a href="{{ url_for('main.upload_avatar') }}" class="btn btn-outline btn-sm"><i class="fas fa-camera"></i> 更换头像</a>
+              <a href="{{ url_for('main.user_space', username=user.username) }}" class="btn btn-outline btn-sm"><i class="fas fa-home"></i> 我的空间</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- History & Data -->
+        <section class="settings-card">
+          <div class="card-header" data-collapse="collapse-data">
+            <h2><i class="fas fa-database"></i> 数据</h2>
+            <span class="collapse-arrow"><i class="fas fa-chevron-down"></i></span>
+          </div>
+          <div class="card-body" id="collapse-data">
+            <div class="account-links">
+              <a href="{{ url_for('main.history') }}" class="btn btn-outline btn-sm"><i class="fas fa-history"></i> 观看历史</a>
+              <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm" style="border-color:var(--red);color:var(--red);" onclick="localStorage.removeItem('access_token')"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="fas fa-save"></i> 保存设置
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
 (function() {
-  // Live accent color preview
+  // ── Tab switching ─────────────────────────────────
+  var tabs = document.querySelectorAll('.settings-tab');
+  var panels = document.querySelectorAll('.settings-panel');
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var target = this.dataset.tab;
+      tabs.forEach(function(t) { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      this.classList.add('active');
+      this.setAttribute('aria-selected', 'true');
+
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      var panel = document.getElementById('panel-' + target);
+      if (panel) panel.classList.add('active');
+
+      // Persist active tab
+      localStorage.setItem('settings-tab', target);
+    });
+  });
+
+  // Restore last tab
+  var savedTab = localStorage.getItem('settings-tab');
+  if (savedTab) {
+    var tab = document.querySelector('.settings-tab[data-tab="' + savedTab + '"]');
+    if (tab) tab.click();
+  }
+
+  // ── Collapse cards ────────────────────────────────
+  document.querySelectorAll('.card-header[data-collapse]').forEach(function(header) {
+    header.addEventListener('click', function() {
+      var target = document.getElementById(this.dataset.collapse);
+      if (!target) return;
+      var isOpen = target.classList.toggle('collapsed');
+      var arrow = this.querySelector('.collapse-arrow i');
+      if (arrow) {
+        arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+      }
+      // Persist collapse state
+      localStorage.setItem('collapse-' + this.dataset.collapse, isOpen ? 'closed' : 'open');
+    });
+
+    // Restore collapse state
+    var state = localStorage.getItem('collapse-' + header.dataset.collapse);
+    if (state === 'closed') {
+      var target = document.getElementById(header.dataset.collapse);
+      if (target) {
+        target.classList.add('collapsed');
+        var arrow = header.querySelector('.collapse-arrow i');
+        if (arrow) arrow.style.transform = 'rotate(-90deg)';
+      }
+    }
+  });
+
+  // ── Accent color live preview ─────────────────────
   var presets = document.querySelectorAll('.color-preset');
   var customPicker = document.getElementById('accentColorPicker');
 
@@ -139,23 +482,25 @@
     var hg = lighten(g).toString(16).padStart(2, '0');
     var hb = lighten(b).toString(16).padStart(2, '0');
     document.documentElement.style.setProperty('--primary-hover', '#' + hr + hg + hb);
-    customPicker.value = color;
   }
 
   presets.forEach(function(btn) {
     btn.addEventListener('click', function() {
-      applyColor(this.dataset.color);
-      presets.forEach(function(b) { b.innerHTML = ''; });
+      var color = this.dataset.color;
+      applyColor(color);
+      customPicker.value = color;
+      presets.forEach(function(b) { b.classList.remove('active'); b.innerHTML = ''; });
+      this.classList.add('active');
       this.innerHTML = '<i class="fas fa-check"></i>';
     });
   });
 
   customPicker.addEventListener('input', function() {
     applyColor(this.value);
-    presets.forEach(function(b) { b.innerHTML = ''; });
+    presets.forEach(function(b) { b.classList.remove('active'); b.innerHTML = ''; });
   });
 
-  // Live theme mode preview
+  // ── Theme mode live preview ───────────────────────
   var themeRadios = document.querySelectorAll('input[name="theme_mode"]');
   themeRadios.forEach(function(r) {
     r.addEventListener('change', function() {
@@ -166,6 +511,52 @@
         document.documentElement.removeAttribute('data-theme');
       }
     });
+  });
+
+  // ── Radio tiles: sync visual with hidden input ────
+  document.querySelectorAll('.radio-tile input').forEach(function(input) {
+    input.addEventListener('change', function() {
+      var group = this.closest('.radio-tiles');
+      if (group) {
+        group.querySelectorAll('.radio-tile').forEach(function(t) { t.classList.remove('active'); });
+      }
+      if (this.checked) {
+        this.closest('.radio-tile').classList.add('active');
+      }
+    });
+  });
+
+  // ── Model card selection ──────────────────────────
+  document.querySelectorAll('.model-card input').forEach(function(input) {
+    input.addEventListener('change', function() {
+      document.querySelectorAll('.model-card').forEach(function(c) { c.classList.remove('active'); });
+      if (this.checked) {
+        this.closest('.model-card').classList.add('active');
+      }
+      // Live sync to widget
+      localStorage.setItem('l2d-model', this.value);
+    });
+  });
+
+  // ── Live2D localStorage sync ──────────────────────
+  document.querySelector('input[name="l2d_size"]')?.addEventListener('change', function() {
+    if (this.checked) localStorage.setItem('l2d-size', this.value);
+  });
+  document.querySelector('input[name="l2d_position"]')?.addEventListener('change', function() {
+    if (this.checked) localStorage.setItem('l2d-position', this.value);
+  });
+
+  // Sync all Live2D prefs on form submit
+  var form = document.getElementById('settingsForm');
+  form.addEventListener('submit', function() {
+    var modelInput = form.querySelector('input[name="l2d_model"]:checked');
+    if (modelInput) localStorage.setItem('l2d-model', modelInput.value);
+    var sizeInput = form.querySelector('input[name="l2d_size"]:checked');
+    if (sizeInput) localStorage.setItem('l2d-size', sizeInput.value);
+    var posInput = form.querySelector('input[name="l2d_position"]:checked');
+    if (posInput) localStorage.setItem('l2d-position', posInput.value);
+    var mascotCheck = form.querySelector('input[name="mascot_visible"]');
+    localStorage.setItem('l2d-visible', mascotCheck ? mascotCheck.checked : true);
   });
 })();
 </script>

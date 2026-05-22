@@ -7,6 +7,7 @@ from flask_socketio import SocketIO
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from config import config_map
+from extensions import limiter
 from models import db, User, scan_videos, seed_games
 from routes.video import CATEGORIES, CATEGORY_ICONS
 from routes.games import GAME_CATEGORIES, GAME_CATEGORY_ICONS, GAME_CATEGORY_COLORS
@@ -31,6 +32,7 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    limiter.init_app(app)
 
     # ── JSON 请求豁免 CSRF（必须在 csrf.init_app 之前注册） ─
     @app.before_request
@@ -103,6 +105,14 @@ def create_app(config_name=None):
         return render_template('error.html', code=404,
             title='页面未找到',
             message='你访问的页面不存在或已被移除。'), 404
+
+    @app.errorhandler(429)
+    def too_many_requests(e):
+        if request.is_json or request.path.startswith('/api/'):
+            return jsonify({'error': '请求过于频繁，请稍后再试', 'code': 'rate_limited'}), 429
+        return render_template('error.html', code=429,
+            title='请求太频繁',
+            message='你在短时间内发送了太多请求，请稍等片刻后重试。'), 429
 
     @app.errorhandler(500)
     def server_error(e):
