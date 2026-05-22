@@ -8,6 +8,7 @@ from routes.playlists import playlist_bp
 from routes.admin import admin_bp
 from routes.third_party import third_bp
 from routes.qrcode import qrcode_bp
+from routes.webhook import webhook_bp
 
 
 def register_blueprints(app):
@@ -21,3 +22,4 @@ def register_blueprints(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(third_bp)
     app.register_blueprint(qrcode_bp)
+    app.register_blueprint(webhook_bp)

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Webhook Dashboard{% endblock %}
+{% block content %}
+<div style="max-width:1000px;margin:0 auto;">
+  <h1><i class="fas fa-plug"></i> Webhook / Callback Demo</h1>
+  <p class="text-muted">
+    This page demonstrates third-party callback integration.
+    External services POST to <code>/api/webhook/&lt;event_type&gt;</code>,
+    and this backend processes the event, logs it, and triggers actions
+    (add coins, send notifications, etc.).
+  </p>
+
+  <!-- Info cards -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">
+    <div style="flex:1;min-width:200px;background:#e8f5e9;padding:12px;border-radius:8px;">
+      <h4 style="margin:0 0 4px;color:#2e7d32;">Webhook URL</h4>
+      <code style="font-size:12px;">/api/webhook/&lt;event_type&gt;</code>
+    </div>
+    <div style="flex:1;min-width:200px;background:#fff3e0;padding:12px;border-radius:8px;">
+      <h4 style="margin:0 0 4px;color:#e65100;">Auth Header</h4>
+      <code style="font-size:12px;">X-Webhook-Signature: &lt;HMAC-SHA256&gt;</code>
+    </div>
+    <div style="flex:1;min-width:200px;background:#e3f2fd;padding:12px;border-radius:8px;">
+      <h4 style="margin:0 0 4px;color:#1565c0;">Secret (dev)</h4>
+      <code style="font-size:12px;">{{ webhook_secret }}</code>
+    </div>
+  </div>
+
+  <!-- Simulator -->
+  <div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:20px;">
+    <h3><i class="fas fa-flask"></i> Webhook Simulator</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);">Send a test webhook and observe it appear in the log below.</p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="form-group" style="flex:1;min-width:180px;">
+        <label>Event Type</label>
+        <select id="simType" style="width:100%;">
+          <option value="payment_completed">payment_completed (+ coins)</option>
+          <option value="video_ready">video_ready (notify user)</option>
+          <option value="comment_moderated">comment_moderated</option>
+          <option value="user_updated">user_updated (update profile)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:120px;">
+        <label>User ID</label>
+        <input type="number" id="simUserId" value="1" style="width:100%;">
+      </div>
+      <div class="form-group" style="flex:1;min-width:100px;">
+        <label>Coins (for payment)</label>
+        <input type="number" id="simCoins" value="100" style="width:100%;">
+      </div>
+      <button id="simSendBtn" class="btn btn-primary" style="height:fit-content;">
+        <i class="fas fa-paper-plane"></i> Send Test Webhook
+      </button>
+    </div>
+    <pre id="simResult" style="margin-top:10px;padding:8px;background:var(--bg-color);border-radius:6px;font-size:12px;min-height:20px;"></pre>
+  </div>
+
+  <!-- Log table -->
+  <h3><i class="fas fa-history"></i> Webhook Log (Last 50)</h3>
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:var(--bg-color);">
+          <th style="padding:8px 10px;text-align:left;">Time</th>
+          <th style="padding:8px 10px;text-align:left;">Event</th>
+          <th style="padding:8px 10px;text-align:left;">Source</th>
+          <th style="padding:8px 10px;text-align:left;">Signature</th>
+          <th style="padding:8px 10px;text-align:left;">Payload</th>
+          <th style="padding:8px 10px;text-align:left;">Result</th>
+        </tr>
+      </thead>
+      <tbody id="logBody">
+        {% if logs %}
+        {% for l in logs %}
+        <tr style="border-bottom:1px solid var(--border-color);">
+          <td style="padding:6px 10px;white-space:nowrap;">{{ l.created_at.strftime('%H:%M:%S') }}</td>
+          <td style="padding:6px 10px;"><span class="badge">{{ l.event_type }}</span></td>
+          <td style="padding:6px 10px;">{{ l.source }}</td>
+          <td style="padding:6px 10px;">
+            {% if l.signature_valid %}<span style="color:#2e7d32;">valid</span>
+            {% else %}<span style="color:#f45a8d;">invalid</span>{% endif %}
+          </td>
+          <td style="padding:6px 10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ l.payload | tojson | truncate(80) }}</td>
+          <td style="padding:6px 10px;">{{ l.result }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No webhook events yet. Use the simulator above.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.getElementById('simSendBtn').addEventListener('click', function() {
+  var type = document.getElementById('simType').value;
+  var uid = document.getElementById('simUserId').value;
+  var coins = document.getElementById('simCoins').value;
+  var payload = {};
+  if (type === 'payment_completed') {
+    payload = { user_id: parseInt(uid), coins: parseInt(coins), order_id: 'ORD_' + Date.now() };
+  } else if (type === 'video_ready') {
+    payload = { video_id: 1, user_id: parseInt(uid), title: 'Test Video' };
+  } else if (type === 'comment_moderated') {
+    payload = { comment_id: 1, action: 'approved', moderator: 'system' };
+  } else if (type === 'user_updated') {
+    payload = { user_id: parseInt(uid), nickname: 'UpdatedName_' + Date.now() };
+  }
+
+  var resultEl = document.getElementById('simResult');
+  resultEl.textContent = 'Sending...';
+
+  fetch('/api/webhook/simulate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: type, payload: payload })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    resultEl.textContent = JSON.stringify(d, null, 2);
+    if (d.status === 'sent') {
+      showToast('Webhook sent and processed!', 'success');
+      setTimeout(function() { location.reload(); }, 800);
+    }
+  }).catch(function(e) {
+    resultEl.textContent = 'Error: ' + e.message;
+  });
+});
+</script>
+{% endblock %}

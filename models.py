@@ -422,6 +422,19 @@ class PasswordResetToken(db.Model):
         return reset
 
 
+# ── Webhook 回调日志 ─────────────────────────────────────
+
+class WebhookLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(50), nullable=False, index=True)
+    source = db.Column(db.String(100), default='')
+    payload = db.Column(db.JSON, default=dict)
+    signature_valid = db.Column(db.Boolean, default=False)
+    processed = db.Column(db.Boolean, default=False)
+    result = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+
 # ── XP 奖励 ───────────────────────────────────────────────
 
 XP_UPLOAD = 30
