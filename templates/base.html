@@ -338,7 +338,7 @@
 </script>
 
 <!-- Live2D Widget -->
-{% if current_user and (current_user.preferences or {}).get('mascot_visible', True) and request.endpoint == 'main.index' %}
+{% if current_user and (current_user.preferences or {}).get('mascot_visible', True) %}
 <link rel="stylesheet" href="{{ url_for('static', filename='live2d/waifu.css') }}">
 <script src="{{ url_for('static', filename='live2d/live2d.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/live2d-widget.js') }}"></script>

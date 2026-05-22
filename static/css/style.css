@@ -2947,7 +2947,7 @@ img[loading="lazy"]:not([src]) {
 /* ===== Chat Widget ===== */
 #chatWidget {
   position: fixed;
-  bottom: 80px;
+  bottom: 340px;
   right: 20px;
   width: 320px;
   background: var(--card-bg);
@@ -3025,5 +3025,5 @@ img[loading="lazy"]:not([src]) {
 .captcha-group input { flex: 1; }
 
 @media (max-width: 640px) {
-  #chatWidget { width: 280px; right: 10px; bottom: 70px; }
+  #chatWidget { width: 280px; right: 10px; bottom: 310px; }
 }
