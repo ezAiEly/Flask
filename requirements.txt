@@ -19,3 +19,5 @@ Pillow==11.3.0
 PyMySQL==1.2.0
 captcha==0.7.1
 requests==2.34.2
+qrcode==8.2
+flask-cors==6.0.2
